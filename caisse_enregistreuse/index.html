@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulateur Caisse Enregistreuse</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="caisse-container">
+        <!-- Zone Gauche: Ticket de caisse -->
+        <div class="ticket-section">
+            <div class="ticket-header">
+                <h2>Supermarché Jules</h2>
+                <p>Ticket de caisse</p>
+                <hr>
+            </div>
+            <ul id="ticket-items" class="ticket-items">
+                <!-- Les articles apparaîtront ici -->
+            </ul>
+            <div class="ticket-footer">
+                <hr>
+                <div class="total-row">
+                    <span>TOTAL:</span>
+                    <span id="total-price">0.00 €</span>
+                </div>
+                <div id="customer-status" class="customer-status">
+                    En attente d'un client...
+                </div>
+            </div>
+        </div>
+
+        <!-- Zone Droite: Pavé numérique et Actions -->
+        <div class="controls-section">
+            <div class="products-grid" id="products-grid">
+                <!-- Boutons produits générés en JS -->
+            </div>
+
+            <div class="action-panel">
+                <div class="numpad">
+                    <!-- Première ligne -->
+                    <button class="num-btn" data-val="7">7</button>
+                    <button class="num-btn" data-val="8">8</button>
+                    <button class="num-btn" data-val="9">9</button>
+                    <!-- Deuxième ligne -->
+                    <button class="num-btn" data-val="4">4</button>
+                    <button class="num-btn" data-val="5">5</button>
+                    <button class="num-btn" data-val="6">6</button>
+                    <!-- Troisième ligne -->
+                    <button class="num-btn" data-val="1">1</button>
+                    <button class="num-btn" data-val="2">2</button>
+                    <button class="num-btn" data-val="3">3</button>
+                    <!-- Quatrième ligne -->
+                    <button class="num-btn" data-val="0">0</button>
+                    <button class="num-btn" data-val=".">.</button>
+                    <button class="action-btn clear-btn" id="btn-clear">C</button>
+                </div>
+
+                <div class="input-display">
+                    <input type="text" id="manual-input" readonly placeholder="Code produit">
+                    <button class="action-btn enter-btn" id="btn-enter">ENTRER</button>
+                </div>
+
+                <div class="main-actions">
+                    <button class="action-btn checkout-btn" id="btn-checkout">ENCAISSER</button>
+                    <button class="action-btn next-client-btn" id="btn-next-client">CLIENT SUIVANT</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale Paiement / Rendu de monnaie -->
+    <div id="payment-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2>Paiement</h2>
+            <p class="modal-total">Total à payer: <span id="modal-total-amount">0.00 €</span></p>
+            <div id="payment-step-1">
+                <p>Le client donne: <span id="client-given">0.00 €</span></p>
+                <p>Veuillez calculer la monnaie à rendre :</p>
+                <div class="change-input-group">
+                    <input type="text" id="change-input" placeholder="Montant à rendre (ex: 2.50)">
+                    <button id="btn-validate-change">Valider la monnaie</button>
+                </div>
+                <p id="change-feedback" class="feedback-msg"></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
