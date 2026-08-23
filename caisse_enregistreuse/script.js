@@ -404,3 +404,154 @@ handleMainInput = function(e) {
     // Appel de la fonction originale pour le reste
     originalHandleMainInput(e);
 }
+
+// --- SYSTEME DE PROGRESSION (XP ET CARRIERE) ---
+let save = {
+    xp: 0,
+    jour: 1,
+    grade: "STAGIAIRE"
+};
+
+// Charger la sauvegarde locale si existante
+function loadSave() {
+    const savedData = localStorage.getItem('noz_save');
+    if (savedData) {
+        save = JSON.parse(savedData);
+    }
+}
+
+function saveGame() {
+    localStorage.setItem('noz_save', JSON.stringify(save));
+}
+
+function getGradeInfo() {
+    if (save.xp < 100) return "STAGIAIRE";
+    if (save.xp < 300) return "HÔTE(SSE) DE CAISSE";
+    if (save.xp < 600) return "CHEF DE RAYON";
+    return "RESPONSABLE ADJOINT";
+}
+
+// Mettre à jour endGame pour inclure la progression
+const originalEndGame = endGame;
+endGame = function() {
+    clearInterval(gameInterval);
+    showScreen('end');
+
+    // Calcul de l'écart (en centimes pour la précision, mais on le garde en euros ici pour le display)
+    const ecart = state.caisseReelle - state.fondCaisse;
+
+    // Calcul de l'XP
+    let gainXp = 0;
+    let messageEcart = "";
+
+    // Tolérance d'erreur de caisse de 0.05€
+    if (Math.abs(ecart) <= 0.05) {
+        gainXp = 25;
+        messageEcart = "CAISSE JUSTE ! (+25 XP)";
+    } else if (ecart > 0.05) {
+        gainXp = 10; // C'est pas ouf mais NOZ gagne de l'argent
+        messageEcart = `EXCEDENT DE CAISSE DE +${ecart.toFixed(2)} € (+10 XP)`;
+    } else {
+        gainXp = 0; // Trou de caisse
+        messageEcart = `TROU DE CAISSE DE ${ecart.toFixed(2)} € (0 XP - AVERTISSEMENT)`;
+    }
+
+    save.xp += gainXp;
+    save.jour++;
+    save.grade = getGradeInfo();
+    saveGame();
+
+    document.getElementById('end-stats').innerHTML = `
+        FOND INITIAL: ${state.fondCaisse.toFixed(2)} €<br>
+        CAISSE FINALE: ${state.caisseReelle.toFixed(2)} €<br>
+        RESULTAT: <span style="color:${Math.abs(ecart)<=0.05 ? '#0f0' : '#f00'}">${messageEcart}</span><br>
+        <br>
+        --- PROGRESSION CARRIERE ---<br>
+        JOUR TERMINE: ${save.jour - 1}<br>
+        EXPERIENCE TOTALE: ${save.xp} XP<br>
+        GRADE ACTUEL: <span class="title-noz">${save.grade}</span><br>
+        <br>
+        >>> VOUS POUVEZ FERMER L'APPLICATION.<br>
+        [F5] POUR DEMARRER LE JOUR SUIVANT
+    `;
+}
+
+// Appel du chargement à l'initialisation
+loadSave();
+
+// --- DESIGN SONORE (AUDIO API) ---
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playBeep(type) {
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+
+    if (type === 'scan') {
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(1200, audioCtx.currentTime); // Aigu et court
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.1);
+    }
+    else if (type === 'error') {
+        oscillator.type = 'sawtooth';
+        oscillator.frequency.setValueAtTime(200, audioCtx.currentTime); // Grave et "buzzy"
+        gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.4);
+    }
+    else if (type === 'caisse') {
+        // Un son composite pour la caisse (cha-ching)
+        oscillator.type = 'square';
+        oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.3);
+        gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.3);
+    }
+}
+
+// Injecter le son dans les fonctions existantes
+const originalValiderSaisie = validerSaisie;
+validerSaisie = function() {
+    if (!state.mainInput) {
+        if (commandeEnCours.length > 0) {
+            playBeep('scan');
+        }
+    } else {
+        if (commandeEnCours.length > 0 && state.mainInput === commandeEnCours[0].code) {
+            playBeep('scan');
+        } else {
+            playBeep('error');
+        }
+    }
+    originalValiderSaisie();
+}
+
+const originalTriggerEvent = triggerEvent;
+triggerEvent = function(type, data = null) {
+    playBeep('error');
+    originalTriggerEvent(type, data);
+}
+
+const originalValiderMonnaie = validerMonnaie;
+validerMonnaie = function() {
+    playBeep('caisse');
+    originalValiderMonnaie();
+}
+
+// Ajouter le flash visuel au scan
+const originalPlayBeep = playBeep;
+playBeep = function(type) {
+    if (type === 'scan') {
+        document.body.classList.add('flash');
+        setTimeout(() => document.body.classList.remove('flash'), 50);
+    }
+    originalPlayBeep(type);
+}

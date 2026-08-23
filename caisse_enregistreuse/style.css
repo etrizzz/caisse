@@ -191,3 +191,18 @@ body {
     text-align: center;
     font-size: 1.5em;
 }
+/* Quelques animations CSS pour polir (flash scan) */
+body::after {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-color: white;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.1s;
+    z-index: 9999;
+}
+body.flash::after {
+    opacity: 0.3;
+    transition: none;
+}
