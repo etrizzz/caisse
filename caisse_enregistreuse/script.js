@@ -1,263 +1,406 @@
-// Base de données des produits du magasin
-const catalogue = [
-    { code: "101", nom: "Baguette", prix: 1.10 },
-    { code: "102", nom: "Croissant", prix: 1.20 },
-    { code: "201", nom: "Lait 1L", prix: 0.95 },
-    { code: "202", nom: "Beurre doux", prix: 2.50 },
-    { code: "301", nom: "Pommes (kg)", prix: 2.99 },
-    { code: "302", nom: "Bananes (kg)", prix: 1.99 },
-    { code: "401", nom: "Poulet entier", prix: 6.50 },
-    { code: "402", nom: "Steak haché x2", prix: 4.20 },
-    { code: "501", nom: "Pâtes 500g", prix: 0.85 },
-    { code: "502", nom: "Riz 1kg", prix: 1.80 },
-    { code: "601", nom: "Coca-Cola 1.5L", prix: 1.65 },
-    { code: "602", nom: "Eau source 1.5L", prix: 0.40 }
-];
-
-// État de la caisse
-let ticket = [];
-let total = 0;
-let saisieManuelle = "";
-
-// Éléments du DOM
-const productsGrid = document.getElementById('products-grid');
-const ticketItems = document.getElementById('ticket-items');
-const totalPriceEl = document.getElementById('total-price');
-const manualInputEl = document.getElementById('manual-input');
-
-// Initialisation au chargement
-function init() {
-    genererBoutonsProduits();
-    setupNumpad();
-}
-
-// Générer les boutons de produits dans la grille
-function genererBoutonsProduits() {
-    productsGrid.innerHTML = '';
-    catalogue.forEach(produit => {
-        const btn = document.createElement('button');
-        btn.className = 'product-btn';
-        btn.innerHTML = `
-            <span>${produit.nom}</span>
-            <span>${produit.prix.toFixed(2)} €</span>
-            <span class="p-code">[${produit.code}]</span>
-        `;
-        btn.onclick = () => ajouterAuTicket(produit);
-        productsGrid.appendChild(btn);
-    });
-}
-
-// Configuration du pavé numérique
-function setupNumpad() {
-    const numBtns = document.querySelectorAll('.num-btn');
-    numBtns.forEach(btn => {
-        btn.onclick = () => {
-            saisieManuelle += btn.getAttribute('data-val');
-            manualInputEl.value = saisieManuelle;
-        };
-    });
-
-    document.getElementById('btn-clear').onclick = () => {
-        saisieManuelle = "";
-        manualInputEl.value = "";
-    };
-
-    document.getElementById('btn-enter').onclick = validerSaisieManuelle;
-}
-
-// Fonction appelée via le bouton ENTRER (ou touche Entrée du clavier)
-function validerSaisieManuelle() {
-    if (!saisieManuelle) return;
-
-    // Chercher dans le catalogue par code barre
-    const produit = catalogue.find(p => p.code === saisieManuelle);
-
-    if (produit) {
-        ajouterAuTicket(produit);
-    } else {
-        alert("Code produit inconnu !");
-    }
-
-    saisieManuelle = "";
-    manualInputEl.value = "";
-}
-
-// Support du vrai clavier
-document.addEventListener('keydown', (e) => {
-    // Si la modale de paiement est ouverte, on ne gère pas le clavier ici
-    if (!document.getElementById('payment-modal').classList.contains('hidden')) return;
-
-    if (e.key >= '0' && e.key <= '9') {
-        saisieManuelle += e.key;
-        manualInputEl.value = saisieManuelle;
-    } else if (e.key === 'Backspace') {
-        saisieManuelle = saisieManuelle.slice(0, -1);
-        manualInputEl.value = saisieManuelle;
-    } else if (e.key === 'Enter') {
-        validerSaisieManuelle();
-    }
-});
-
-// Ajouter un produit au ticket
-function ajouterAuTicket(produit) {
-    // On ajoute simplement à la liste (sans grouper pour faire "vrai" ticket qui défile)
-    ticket.push(produit);
-    total += produit.prix;
-
-    mettreAJourAffichageTicket();
-}
-
-// Mettre à jour la vue du ticket
-function mettreAJourAffichageTicket() {
-    ticketItems.innerHTML = '';
-
-    ticket.forEach(item => {
-        const li = document.createElement('li');
-        li.className = 'ticket-item';
-        li.innerHTML = `
-            <span class="item-name">${item.nom}</span>
-            <span class="item-price">${item.prix.toFixed(2)} €</span>
-        `;
-        ticketItems.appendChild(li);
-    });
-
-    // Auto-scroll vers le bas
-    ticketItems.scrollTop = ticketItems.scrollHeight;
-
-    // Mettre à jour le total
-    totalPriceEl.textContent = total.toFixed(2) + ' €';
-}
-
-// --- LOGIQUE D'ENCAISSEMENT ---
-const btnCheckout = document.getElementById('btn-checkout');
-const paymentModal = document.getElementById('payment-modal');
-const modalTotalAmount = document.getElementById('modal-total-amount');
-const clientGivenEl = document.getElementById('client-given');
-const changeInput = document.getElementById('change-input');
-const btnValidateChange = document.getElementById('btn-validate-change');
-const changeFeedback = document.getElementById('change-feedback');
-let amountGivenByClient = 0;
-let changeDue = 0;
-
-btnCheckout.onclick = () => {
-    if (ticket.length === 0) {
-        alert("Le ticket est vide !");
-        return;
-    }
-
-    // Générer un montant donné par le client (soit exact, soit un peu plus)
-    genererPaiementClient();
-
-    modalTotalAmount.textContent = total.toFixed(2) + ' €';
-    clientGivenEl.textContent = amountGivenByClient.toFixed(2) + ' €';
-    changeDue = amountGivenByClient - total;
-
-    // Reset modal inputs
-    changeInput.value = '';
-    changeFeedback.textContent = '';
-    changeFeedback.className = 'feedback-msg';
-
-    paymentModal.classList.remove('hidden');
-    changeInput.focus();
+// --- CONFIGURATION ET ETAT GLOBAL ---
+let state = {
+    screen: 'login', // login, fond, main, end
+    matricule: '',
+    fondCaisse: 0,
+    caisseReelle: 0, // L'argent physiquement dans le tiroir
+    timeMinutes: 8 * 60, // 08:00
+    timeEndMinutes: 19 * 60, // 19:00
+    gameSpeed: 10, // 1 seconde réelle = 10 minutes virtuelles ? Non, c'est trop rapide.
+    // Faisons 1 tick (1 seconde réelle) = 2 minutes in-game
+    // 8h à 19h = 11h = 660 minutes. / 2 = 330 secondes (5.5 minutes la partie)
+    queue: 0,
+    isClientAtRegister: false,
+    ticket: [],
+    totalTicket: 0,
+    mainInput: "",
+    mode: "scan", // scan, payment, event
+    activeEvent: null // stocke l'imprévu en cours
 };
 
-function genererPaiementClient() {
-    // Le client donne soit le montant exact (20% de chances)
-    // Soit un billet supérieur courant (5, 10, 20, 50)
-    const rand = Math.random();
-    if (rand < 0.2) {
-        amountGivenByClient = total;
-    } else {
-        const billets = [5, 10, 20, 50, 100];
-        // Trouver le plus petit billet supérieur au total
-        let billetAdequat = billets.find(b => b >= total);
-        if (!billetAdequat) billetAdequat = Math.ceil(total / 50) * 50; // Pour les très gros montants
+let gameInterval = null;
 
-        // Parfois ils donnent un billet encore plus gros
-        if (Math.random() < 0.3) {
-            const index = billets.indexOf(billetAdequat);
-            if (index !== -1 && index < billets.length - 1) {
-                billetAdequat = billets[index + 1];
-            }
-        }
-        amountGivenByClient = billetAdequat;
-    }
+// --- GESTION DES ECRANS ---
+function showScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(screenId + '-screen').classList.add('active');
+    state.screen = screenId;
 }
 
-btnValidateChange.onclick = verifierMonnaie;
+// --- CLAVIER GLOBAL ---
+document.addEventListener('keydown', (e) => {
+    // Plein écran avec F11 géré par le navigateur par défaut
 
-changeInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-        verifierMonnaie();
-    }
+    if (state.screen === 'login') handleLoginInput(e);
+    else if (state.screen === 'fond') handleFondInput(e);
+    else if (state.screen === 'main') handleMainInput(e);
 });
 
-function verifierMonnaie() {
-    const inputVal = parseFloat(changeInput.value.replace(',', '.'));
+// --- ECRAN 1: LOGIN ---
+function handleLoginInput(e) {
+    if (e.key === 'Enter') {
+        const val = document.getElementById('login-input').value;
+        if (val.length > 0) {
+            state.matricule = val;
+            document.getElementById('op-id').textContent = val;
+            showScreen('fond');
+            document.getElementById('fond-input').focus();
+        }
+    }
+}
 
-    if (isNaN(inputVal)) {
-        changeFeedback.textContent = "Veuillez entrer un nombre valide.";
-        changeFeedback.className = "feedback-msg error";
+// --- ECRAN 2: FOND DE CAISSE ---
+function handleFondInput(e) {
+    if (e.key === 'Enter') {
+        const val = parseFloat(document.getElementById('fond-input').value.replace(',', '.'));
+        if (!isNaN(val)) {
+            state.fondCaisse = val;
+            state.caisseReelle = val;
+            startGame();
+        }
+    }
+}
+
+// --- BOUCLE PRINCIPALE (TEMPS & CLIENTS) ---
+function startGame() {
+    showScreen('main');
+    updateClockDisplay();
+    updateQueueDisplay();
+    gameInterval = setInterval(gameTick, 1000); // 1 tick par seconde
+}
+
+function gameTick() {
+    // Temps
+    state.timeMinutes += 2; // Avance de 2 minutes in-game
+    updateClockDisplay();
+
+    // Fin de journée ?
+    if (state.timeMinutes >= state.timeEndMinutes) {
+        endGame();
         return;
     }
 
-    // On arrondit pour éviter les erreurs de flottants JS
-    const dueRound = Math.round(changeDue * 100);
-    const inputRound = Math.round(inputVal * 100);
-
-    if (inputRound === dueRound) {
-        changeFeedback.textContent = "Parfait ! La caisse s'ouvre. Ticket clôturé.";
-        changeFeedback.className = "feedback-msg success";
-        setTimeout(cloturerTicket, 2000); // On attend 2 sec puis on ferme
-    } else {
-        changeFeedback.textContent = "Erreur de caisse ! Il manque ou il y a trop de monnaie.";
-        changeFeedback.className = "feedback-msg error";
+    // Génération de clients (File d'attente)
+    // Plus il est tard, plus y'a de monde ? On fait aléatoire
+    if (Math.random() < 0.15) { // 15% de chance d'avoir 1 ou 2 clients en plus par tick
+        state.queue += Math.floor(Math.random() * 2) + 1;
+        updateQueueDisplay();
     }
 }
 
-function cloturerTicket() {
-    paymentModal.classList.add('hidden');
-    ticket = [];
-    total = 0;
-    mettreAJourAffichageTicket();
-
-    const customerStatus = document.getElementById('customer-status');
-    customerStatus.textContent = "En attente d'un client...";
-    customerStatus.style.backgroundColor = "#f39c12"; // Orange
-
-    // Vider la commande en cours
-    commandeEnCours = [];
+function updateClockDisplay() {
+    const h = Math.floor(state.timeMinutes / 60).toString().padStart(2, '0');
+    const m = (state.timeMinutes % 60).toString().padStart(2, '0');
+    const timeStr = `${h}:${m}`;
+    document.getElementById('clock-main').textContent = timeStr;
 }
 
-// --- LOGIQUE CLIENTS (SIMULATION) ---
-const btnNextClient = document.getElementById('btn-next-client');
+function updateQueueDisplay() {
+    document.getElementById('queue-count').textContent = state.queue;
+}
+
+// --- FIN DE JOURNEE ---
+function endGame() {
+    clearInterval(gameInterval);
+    showScreen('end');
+
+    // Calcul de l'écart de caisse
+    // Le fond initial + l'argent encaissé - la monnaie rendue
+    // Pour simplifier, on assume que la caisseRelle a été bien tenue,
+    // l'écart vient des erreurs de rendu de monnaie du joueur.
+    const ecart = state.caisseReelle - state.fondCaisse; // (On ajoutera la vraie logique après)
+
+    document.getElementById('end-stats').innerHTML = `
+        FOND INITIAL: ${state.fondCaisse.toFixed(2)} €<br>
+        CAISSE FINALE: ${state.caisseReelle.toFixed(2)} €<br>
+        <br>
+        >>> VOUS POUVEZ FERMER L'APPLICATION.
+    `;
+}
+
+// --- CATALOGUE NOZ (PRODUITS BIZARRES) ---
+const nozCatalogue = [
+    { code: "3701234567890", nom: "LOT 300 CURE-DENTS BAMBOU", prix: 0.50 },
+    { code: "8412345678901", nom: "SHAMPOING CHEVAL 5L (ESP)", prix: 2.99 },
+    { code: "5012345678902", nom: "DVD SNOOP DOGG MAC MAC", prix: 0.99 },
+    { code: "4002345678903", nom: "MOUSTARDE ALLEMANDE PERIMEE", prix: 0.20 },
+    { code: "3102345678904", nom: "PANTALON TARTAN T XXL", prix: 4.50 },
+    { code: "3202345678905", nom: "BOITE TUPPERWARE SANS COUVERCLE", prix: 0.30 },
+    { code: "3302345678906", nom: "COQUE IPHONE 3G ROSE", prix: 0.10 },
+    { code: "3402345678907", nom: "LIVRE 'APPRENDRE LE POLONAIS'", prix: 1.50 },
+    { code: "3502345678908", nom: "SAUCISSE MYSTERE SOUS VIDE", prix: 1.20 },
+    { code: "3602345678909", nom: "LOT 5 CHAUSSETTES (PAS DE PAIRE)", prix: 2.00 }
+];
+
+// --- GESTION DU CLIENT ET DU SCAN ---
 let commandeEnCours = [];
 
-btnNextClient.onclick = genererClient;
+function appelerClient() {
+    if (state.isClientAtRegister) return;
+    if (state.queue <= 0) return;
 
-function genererClient() {
-    if (ticket.length > 0) {
-        alert("Terminez d'abord le client actuel !");
+    state.queue--;
+    updateQueueDisplay();
+    state.isClientAtRegister = true;
+
+    // Générer liste de courses (3 à 8 articles)
+    const nbArticles = Math.floor(Math.random() * 6) + 3;
+    commandeEnCours = [];
+    for(let i=0; i<nbArticles; i++) {
+        commandeEnCours.push(nozCatalogue[Math.floor(Math.random() * nozCatalogue.length)]);
+    }
+
+    state.mode = 'scan';
+    state.ticket = [];
+    state.totalTicket = 0;
+    updateTicketDisplay();
+
+    // Afficher client
+    document.getElementById('event-title').textContent = "CLIENT A LA CAISSE";
+    document.getElementById('event-desc').textContent = "Scannez les articles du tapis !";
+    drawTapis();
+}
+
+function drawTapis() {
+    if (commandeEnCours.length === 0) {
+        document.getElementById('client-sprite').textContent = "LE TAPIS EST VIDE.\n\n[+] POUR ENCAISSER.";
         return;
     }
 
-    // Le client choisit entre 2 et 6 articles au hasard
-    const nbArticles = Math.floor(Math.random() * 5) + 2;
-    commandeEnCours = [];
+    // On simule le scan automatique (ou manuel)
+    // Le premier article est celui à scanner
+    const produit = commandeEnCours[0];
 
-    for(let i=0; i<nbArticles; i++) {
-        const randomProduct = catalogue[Math.floor(Math.random() * catalogue.length)];
-        commandeEnCours.push(randomProduct);
+    // Generer un evenement ?
+    if (Math.random() < 0.2) { // 20% de chance d'un bug code barre
+        triggerEvent('CODE_ILLISIBLE', produit);
+        return;
+    }
+    if (Math.random() < 0.05) { // 5% de chance panne rouleau
+        triggerEvent('PANNE_ROULEAU');
+        return;
     }
 
-    // Mettre à jour l'affichage du statut
-    const customerStatus = document.getElementById('customer-status');
-    customerStatus.textContent = `Nouveau client ! Il a ${nbArticles} articles à scanner.`;
-    customerStatus.style.backgroundColor = "#2ecc71"; // Vert
-
-    console.log("Liste de courses du client:", commandeEnCours.map(c => c.nom));
-    alert(`Un client arrive à la caisse !\nIl a ${nbArticles} articles dans son panier.\n\nRegardez le client sur le tapis (Aide pour vous: ${commandeEnCours.map(p => p.nom + ' ['+p.code+']').join(', ')})`);
+    // Sinon, affichage normal
+    document.getElementById('client-sprite').innerHTML = `
+        PROCHAIN ARTICLE SUR LE TAPIS:
+        <br><br>
+        <span style="background:#0f0; color:#000; padding:2px;">[ ${produit.code} ]</span><br>
+        ${produit.nom}
+    `;
 }
 
-// Lancement
-init();
+// --- EVENEMENTS "CHAOS" ---
+function triggerEvent(type, data = null) {
+    state.mode = 'event';
+    state.activeEvent = { type, data };
+
+    if (type === 'CODE_ILLISIBLE') {
+        document.getElementById('event-title').textContent = "!!! BIP ERREUR !!!";
+        document.getElementById('event-desc').textContent = "Code-barre illisible ! Tapez les 13 chiffres manuellement :";
+        document.getElementById('client-sprite').innerHTML = `
+            ${data.nom}<br>
+            CODE: ${data.code}
+        `;
+    }
+    else if (type === 'PANNE_ROULEAU') {
+        const modal = document.getElementById('alert-modal');
+        modal.classList.remove('hidden');
+    }
+}
+
+// --- GESTION DU CLAVIER (CAISSE) ---
+function handleMainInput(e) {
+    if (state.mode === 'scan') {
+        if (e.key === ' ') {
+            appelerClient();
+        } else if (e.key >= '0' && e.key <= '9') {
+            state.mainInput += e.key;
+            updateInputDisplay();
+        } else if (e.key === 'Backspace') {
+            state.mainInput = state.mainInput.slice(0, -1);
+            updateInputDisplay();
+        } else if (e.key === 'Enter') {
+            validerSaisie();
+        } else if (e.key === '+') {
+            if (state.ticket.length > 0 && commandeEnCours.length === 0) {
+                demarrerPaiement();
+            } else if (commandeEnCours.length > 0) {
+                document.getElementById('event-desc').textContent = "TERMINEZ DE SCANNER LE TAPIS D'ABORD !";
+            }
+        }
+    }
+    else if (state.mode === 'event') {
+        if (state.activeEvent.type === 'CODE_ILLISIBLE') {
+            if (e.key >= '0' && e.key <= '9') {
+                state.mainInput += e.key;
+                updateInputDisplay();
+            } else if (e.key === 'Backspace') {
+                state.mainInput = state.mainInput.slice(0, -1);
+                updateInputDisplay();
+            } else if (e.key === 'Enter') {
+                if (state.mainInput === state.activeEvent.data.code) {
+                    // Succès
+                    ajouterAuTicket(state.activeEvent.data);
+                    commandeEnCours.shift();
+                    state.mainInput = "";
+                    updateInputDisplay();
+                    state.mode = 'scan';
+                    state.activeEvent = null;
+                    drawTapis();
+                } else {
+                    document.getElementById('event-desc').textContent = "CODE INCORRECT, RECOMMENCEZ !";
+                    state.mainInput = "";
+                    updateInputDisplay();
+                }
+            }
+        }
+        else if (state.activeEvent.type === 'PANNE_ROULEAU') {
+            if (e.key.toLowerCase() === 'r') {
+                document.getElementById('alert-modal').classList.add('hidden');
+                state.mode = 'scan';
+                state.activeEvent = null;
+                drawTapis();
+            }
+        }
+    }
+    else if (state.mode === 'payment') {
+        if (e.key >= '0' && e.key <= '9' || e.key === '.') {
+            state.mainInput += e.key;
+            updateInputDisplay();
+        } else if (e.key === 'Backspace') {
+            state.mainInput = state.mainInput.slice(0, -1);
+            updateInputDisplay();
+        } else if (e.key === 'Enter') {
+            validerMonnaie();
+        }
+    }
+}
+
+function validerSaisie() {
+    if (!state.mainInput) {
+        // Scan auto si le champ est vide (comme si on utilisait la douchette)
+        if (commandeEnCours.length > 0) {
+            ajouterAuTicket(commandeEnCours[0]);
+            commandeEnCours.shift();
+            drawTapis();
+        }
+    } else {
+        // Saisie manuelle normale (un client qui aurait scanné un code)
+        // Dans ce simulateur, si on tape Entrée et que c'est le bon code sur le tapis, on le passe
+        if (commandeEnCours.length > 0 && state.mainInput === commandeEnCours[0].code) {
+            ajouterAuTicket(commandeEnCours[0]);
+            commandeEnCours.shift();
+            state.mainInput = "";
+            drawTapis();
+        } else {
+            document.getElementById('event-desc').textContent = "BIP ! PRODUIT NON RECONNU (ou pas sur le tapis)";
+            state.mainInput = "";
+        }
+    }
+    updateInputDisplay();
+}
+
+function ajouterAuTicket(produit) {
+    state.ticket.push(produit);
+    state.totalTicket += produit.prix;
+    updateTicketDisplay();
+}
+
+function updateTicketDisplay() {
+    const ul = document.getElementById('ticket-lines');
+    ul.innerHTML = '';
+    state.ticket.forEach(p => {
+        const li = document.createElement('li');
+        li.className = 'ticket-line';
+        li.innerHTML = `<span>${p.nom}</span><span>${p.prix.toFixed(2)} €</span>`;
+        ul.appendChild(li);
+    });
+    ul.scrollTop = ul.scrollHeight;
+    document.getElementById('ticket-total-val').textContent = state.totalTicket.toFixed(2);
+}
+
+function updateInputDisplay() {
+    document.getElementById('main-input-display').textContent = state.mainInput;
+}
+
+// --- PAIEMENT ---
+let paiementClient = 0;
+let aRendre = 0;
+
+function demarrerPaiement() {
+    state.mode = 'payment';
+    state.mainInput = "";
+    updateInputDisplay();
+
+    // Le client donne de l'argent (billet superieur)
+    const billets = [5, 10, 20, 50, 100];
+    paiementClient = billets.find(b => b >= state.totalTicket) || (Math.ceil(state.totalTicket/50)*50);
+    aRendre = paiementClient - state.totalTicket;
+
+    document.getElementById('event-title').textContent = "ENCAISSEMENT";
+    document.getElementById('event-desc').innerHTML = `
+        LE CLIENT DONNE: <b>${paiementClient.toFixed(2)} €</b><br>
+        TAPEZ LE MONTANT A RENDRE ET [ENTRÉE]:
+    `;
+    document.getElementById('client-sprite').textContent = "";
+}
+
+function validerMonnaie() {
+    const saisi = parseFloat(state.mainInput);
+    if (isNaN(saisi)) return;
+
+    const arrondiAttendu = Math.round(aRendre * 100);
+    const arrondiSaisi = Math.round(saisi * 100);
+
+    if (arrondiAttendu === arrondiSaisi) {
+        // Caisse exacte
+        state.caisseReelle += state.totalTicket;
+    } else {
+        // Erreur de caisse (trou ou excédent)
+        const difference = arrondiAttendu - arrondiSaisi;
+        // Si je devais rendre 2 et que je rends 5, j'ai un trou de -3.
+        // Si je devais rendre 5 et que je rends 2, j'ai un excédent de +3 (le client râle mais NOZ est content).
+        state.caisseReelle += state.totalTicket + (difference/100);
+    }
+
+    // Reset pour prochain client
+    state.isClientAtRegister = false;
+    state.ticket = [];
+    state.totalTicket = 0;
+    updateTicketDisplay();
+    state.mainInput = "";
+    updateInputDisplay();
+    state.mode = 'scan';
+
+    document.getElementById('event-title').textContent = "CAISSE OUVERTE";
+    document.getElementById('event-desc').textContent = "Appuyez sur [ESPACE] pour appeler le prochain client.";
+    document.getElementById('client-sprite').textContent = "";
+}
+
+// Lancement direct sur login
+showScreen('login');
+
+// Ajout du raccourci Delete pour annuler un article (comme demandé par la review)
+// On ajoute juste la gestion dans le handleMainInput
+
+const originalHandleMainInput = handleMainInput;
+handleMainInput = function(e) {
+    if (state.mode === 'scan') {
+        if (e.key === 'Delete') {
+            if (state.ticket.length > 0) {
+                const item = state.ticket.pop();
+                state.totalTicket -= item.prix;
+                // On simule une petite pénalité de temps ou juste on met à jour
+                updateTicketDisplay();
+                document.getElementById('event-desc').textContent = "ARTICLE ANNULÉ: " + item.nom;
+            } else {
+                document.getElementById('event-desc').textContent = "BIP ! LE TICKET EST DEJA VIDE.";
+            }
+            return;
+        }
+    }
+
+    // Appel de la fonction originale pour le reste
+    originalHandleMainInput(e);
+}

@@ -3,86 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulateur Caisse Enregistreuse</title>
+    <title>Terminal de Caisse - Mode NOZ</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="caisse-container">
-        <!-- Zone Gauche: Ticket de caisse -->
-        <div class="ticket-section">
-            <div class="ticket-header">
-                <h2>Supermarché Jules</h2>
-                <p>Ticket de caisse</p>
-                <hr>
-            </div>
-            <ul id="ticket-items" class="ticket-items">
-                <!-- Les articles apparaîtront ici -->
-            </ul>
-            <div class="ticket-footer">
-                <hr>
-                <div class="total-row">
-                    <span>TOTAL:</span>
-                    <span id="total-price">0.00 €</span>
-                </div>
-                <div id="customer-status" class="customer-status">
-                    En attente d'un client...
-                </div>
-            </div>
-        </div>
 
-        <!-- Zone Droite: Pavé numérique et Actions -->
-        <div class="controls-section">
-            <div class="products-grid" id="products-grid">
-                <!-- Boutons produits générés en JS -->
-            </div>
-
-            <div class="action-panel">
-                <div class="numpad">
-                    <!-- Première ligne -->
-                    <button class="num-btn" data-val="7">7</button>
-                    <button class="num-btn" data-val="8">8</button>
-                    <button class="num-btn" data-val="9">9</button>
-                    <!-- Deuxième ligne -->
-                    <button class="num-btn" data-val="4">4</button>
-                    <button class="num-btn" data-val="5">5</button>
-                    <button class="num-btn" data-val="6">6</button>
-                    <!-- Troisième ligne -->
-                    <button class="num-btn" data-val="1">1</button>
-                    <button class="num-btn" data-val="2">2</button>
-                    <button class="num-btn" data-val="3">3</button>
-                    <!-- Quatrième ligne -->
-                    <button class="num-btn" data-val="0">0</button>
-                    <button class="num-btn" data-val=".">.</button>
-                    <button class="action-btn clear-btn" id="btn-clear">C</button>
-                </div>
-
-                <div class="input-display">
-                    <input type="text" id="manual-input" readonly placeholder="Code produit">
-                    <button class="action-btn enter-btn" id="btn-enter">ENTRER</button>
-                </div>
-
-                <div class="main-actions">
-                    <button class="action-btn checkout-btn" id="btn-checkout">ENCAISSER</button>
-                    <button class="action-btn next-client-btn" id="btn-next-client">CLIENT SUIVANT</button>
-                </div>
-            </div>
+    <!-- ECRAN 1 : CONNEXION -->
+    <div id="login-screen" class="screen active">
+        <div class="login-box">
+            <h1><span class="title-noz">NOZ</span> OS v3.14</h1>
+            <p>VEUILLEZ SAISIR VOTRE MATRICULE</p>
+            <input type="text" id="login-input" class="login-input" maxlength="4" autocomplete="off" autofocus>
+            <p>[ENTRÉE] POUR VALIDER</p>
         </div>
     </div>
 
-    <!-- Modale Paiement / Rendu de monnaie -->
-    <div id="payment-modal" class="modal hidden">
-        <div class="modal-content">
-            <h2>Paiement</h2>
-            <p class="modal-total">Total à payer: <span id="modal-total-amount">0.00 €</span></p>
-            <div id="payment-step-1">
-                <p>Le client donne: <span id="client-given">0.00 €</span></p>
-                <p>Veuillez calculer la monnaie à rendre :</p>
-                <div class="change-input-group">
-                    <input type="text" id="change-input" placeholder="Montant à rendre (ex: 2.50)">
-                    <button id="btn-validate-change">Valider la monnaie</button>
+    <!-- ECRAN 2 : FOND DE CAISSE -->
+    <div id="fond-caisse-screen" class="screen">
+        <div class="header-bar">
+            <span><span class="title-noz">NOZ</span> OS - OUVERTURE DE CAISSE</span>
+            <span id="clock-opening">08:00</span>
+        </div>
+        <h2>DECLARATION DU FOND DE CAISSE</h2>
+        <br>
+        <p>Veuillez compter votre caisse et saisir le montant (en euros) :</p>
+        <br>
+        <div class="form-group">
+            <label>> MONTANT THEORIQUE : 150.00 €</label><br><br>
+            <label>> MONTANT DECLARE : </label>
+            <input type="text" id="fond-input" autocomplete="off" placeholder="ex: 150.00">
+        </div>
+        <br>
+        <p>[ENTRÉE] POUR VALIDER ET DEMARRER LE SERVICE</p>
+    </div>
+
+    <!-- ECRAN 3 : JEU PRINCIPAL (CAISSE) -->
+    <div id="main-caisse-screen" class="screen">
+        <div class="header-bar">
+            <span>CAISSE N°4 - OP: <span id="op-id">9999</span></span>
+            <span>CLIENTS EN ATTENTE: <span id="queue-count">0</span></span>
+            <span id="clock-main">08:00</span>
+        </div>
+
+        <div class="main-caisse-area">
+            <!-- Ticket -->
+            <div class="ticket-area">
+                <h3>TICKET EN COURS</h3>
+                <hr style="border:1px dashed #0f0; margin: 10px 0;">
+                <ul id="ticket-lines" class="ticket-lines">
+                    <!-- Lignes de ticket -->
+                </ul>
+                <div class="ticket-total">
+                    TOTAL: <span id="ticket-total-val">0.00</span> €
                 </div>
-                <p id="change-feedback" class="feedback-msg"></p>
             </div>
+
+            <!-- Infos / Saisie -->
+            <div class="info-area">
+                <div class="current-input-box">
+                    <span id="main-input-display"></span><span class="blink-cursor">_</span>
+                </div>
+
+                <div class="event-box">
+                    <h3 id="event-title">STATUT: ATTENTE CLIENT</h3>
+                    <p id="event-desc">Appuyez sur [ESPACE] pour appeler le client suivant quand il y en a en attente.</p>
+
+                    <div id="client-sprite" class="client-sprite">
+                        <!-- Art ASCII du client / tapis -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer-shortcuts">
+            <span><span class="shortcut">ENTRÉE</span> VALIDER CODE</span>
+            <span><span class="shortcut">+</span> ENCAISSER</span>
+            <span><span class="shortcut">SUPPR</span> ANNULER ARTICLE</span>
+            <span><span class="shortcut">ESPACE</span> APPELER CLIENT</span>
+            <span><span class="shortcut">F11</span> PLEIN ECRAN</span>
+        </div>
+    </div>
+
+    <!-- ECRAN 4 : FIN DE JOURNEE -->
+    <div id="end-screen" class="screen">
+        <div class="header-bar">
+            <span><span class="title-noz">NOZ</span> OS - FIN DE SERVICE</span>
+            <span id="clock-end">19:00</span>
+        </div>
+        <div style="text-align:center; margin-top:50px;">
+            <h2>BILAN DE LA JOURNÉE</h2>
+            <br>
+            <p id="end-stats"></p>
+            <br><br>
+            <p>[F5] POUR RECOMMENCER UNE JOURNÉE</p>
+        </div>
+    </div>
+
+    <!-- Modale d'alerte (Imprévus) -->
+    <div id="alert-modal" class="alert-overlay hidden">
+        <div class="alert-box">
+            <h2 id="alert-title">ERREUR SYSTEME</h2>
+            <p id="alert-msg">Le lecteur code-barre est bloqué.</p>
+            <br>
+            <p id="alert-action" style="font-size:0.8em; color:#aaa;">[APPUYEZ SUR 'R' POUR REINITIALISER LE ROULEAU]</p>
         </div>
     </div>
 
