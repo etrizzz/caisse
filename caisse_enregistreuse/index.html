@@ -3,147 +3,160 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Terminal de Caisse - Mode NOZ</title>
+    <title>NOZ OS - Point de Vente v4.0</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
     <!-- ECRAN 0 : RECRUTEMENT -->
     <div id="register-screen" class="screen">
-        <div class="login-box" style="width:600px">
-            <h1><span class="title-noz">NOZ</span> RESSOURCES HUMAINES</h1>
-            <p>CONTRAT D'EMBAUCHE</p>
-            <br><p>VEUILLEZ SAISIR VOTRE NOM :</p>
-            <input type="text" id="register-input" class="login-input" style="width:300px;" autocomplete="off">
-            <p>[ENTRÉE] POUR SIGNER LE CONTRAT</p>
+        <div class="login-box">
+            <h1><span class="title-noz">NOZ</span> RH</h1>
+            <p>PORTAIL D'INTEGRATION</p>
+            <input type="text" id="register-input" class="login-input" placeholder="VOTRE NOM" autocomplete="off">
+            <p class="helper-text">[ENTRÉE] POUR VALIDER LE CONTRAT</p>
+        </div>
+    </div>
+
+    <!-- ECRAN 1 : CONNEXION -->
+    <div id="login-screen" class="screen">
+        <div class="login-box">
+            <h1><span class="title-noz">NOZ</span> OS</h1>
+            <p>AUTHENTIFICATION REQUISE</p>
+            <input type="text" id="login-input" class="login-input" placeholder="MATRICULE" maxlength="4" autocomplete="off">
+            <p class="helper-text">[ENTRÉE] POUR SE CONNECTER</p>
         </div>
     </div>
 
     <!-- ECRAN HUB : INTRANET NOZ -->
     <div id="hub-screen" class="screen">
         <div class="header-bar">
-            <span><span class="title-noz">NOZ</span> OS - PORTAIL EMPLOYE</span>
-            <span>MATRICULE: <span id="hub-mat"></span> - <span id="hub-grade"></span></span>
+            <span><span class="title-noz">NOZ</span> OS - INTRANET</span>
+            <div class="header-right">
+                <span id="hub-mat"></span>
+                <span id="hub-grade"></span>
+            </div>
         </div>
-        <div style="text-align:center; margin-top:20px;">
-            <h2>BIENVENUE <span id="hub-nom"></span></h2>
-            <p>EXPERIENCE: <span id="hub-xp"></span> XP</p>
-        </div>
-        <div class="hub-grid">
-            <button class="hub-btn" id="btn-go-caisse">
-                <span>[1]</span>
-                <span>OUVRIR CAISSE</span>
-            </button>
-            <button class="hub-btn locked" id="btn-go-stock">
-                <span>[2]</span>
-                <span>GESTION STOCKS<br><small>(Requiert CHEF DE RAYON)</small></span>
-            </button>
-            <button class="hub-btn locked" id="btn-go-manager">
-                <span>[3]</span>
-                <span>BUREAU RESPONSABLE<br><small>(Requiert RESPONSABLE)</small></span>
-            </button>
-        </div>
-        <p style="text-align:center; margin-top:50px;">Appuyez sur la touche (1) pour lancer votre session de caisse.</p>
-    </div>
+        <div class="hub-container">
+            <div class="hub-welcome">
+                <div>
+                    <h2 style="margin-bottom:5px;">Bienvenue, <span id="hub-nom"></span></h2>
+                    <p style="color:#6c757d;">Sélectionnez un module pour commencer votre session.</p>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-size:2em; font-weight:bold; color:#e60000;" id="hub-xp"></div>
+                    <div style="font-size:0.9em; color:#6c757d; font-weight:bold;">XP CUMULÉE</div>
+                </div>
+            </div>
 
-    <!-- ECRAN 1 : CONNEXION -->
-    <div id="login-screen" class="screen active">
-        <div class="login-box">
-            <h1><span class="title-noz">NOZ</span> OS v3.14</h1>
-            <p>VEUILLEZ SAISIR VOTRE MATRICULE</p>
-            <input type="text" id="login-input" class="login-input" maxlength="4" autocomplete="off" autofocus>
-            <p>[ENTRÉE] POUR VALIDER</p>
+            <div class="hub-grid">
+                <button class="hub-btn" id="btn-go-caisse">
+                    <span class="shortcut-key">TOUCHE 1</span>
+                    <span>LOGICIEL DE CAISSE</span>
+                </button>
+                <button class="hub-btn locked" id="btn-go-stock">
+                    <span class="shortcut-key">TOUCHE 2</span>
+                    <span>GESTION STOCKS<br><small style="font-weight:normal; margin-top:5px; display:block;">(Niveau requis : Chef de Rayon)</small></span>
+                </button>
+                <button class="hub-btn locked" id="btn-go-manager">
+                    <span class="shortcut-key">TOUCHE 3</span>
+                    <span>BUREAU RESPONSABLE<br><small style="font-weight:normal; margin-top:5px; display:block;">(Niveau requis : Responsable)</small></span>
+                </button>
+            </div>
         </div>
     </div>
 
     <!-- ECRAN 2 : FOND DE CAISSE -->
     <div id="fond-caisse-screen" class="screen">
         <div class="header-bar">
-            <span><span class="title-noz">NOZ</span> OS - OUVERTURE DE CAISSE</span>
-            <span id="clock-opening">08:00</span>
+            <span><span class="title-noz">NOZ</span> OS - CAISSE</span>
         </div>
-        <h2>DECLARATION DU FOND DE CAISSE</h2>
-        <br>
-        <p>Veuillez compter votre caisse et saisir le montant (en euros) :</p>
-        <br>
-        <div class="form-group">
-            <label>> MONTANT THEORIQUE : 150.00 €</label><br><br>
-            <label>> MONTANT DECLARE : </label>
-            <input type="text" id="fond-input" autocomplete="off" placeholder="ex: 150.00">
+        <div class="login-box" style="width:500px;">
+            <h2 style="margin-bottom:20px;">OUVERTURE DE CAISSE</h2>
+            <p>Veuillez compter votre tiroir-caisse.</p>
+            <div style="background:#f8f9fa; padding:15px; border-radius:5px; margin-bottom:20px; font-weight:bold; color:#495057;">
+                MONTANT THÉORIQUE ATTENDU : 150.00 €
+            </div>
+            <input type="text" id="fond-input" class="login-input" placeholder="MONTANT RÉEL" autocomplete="off">
+            <p class="helper-text">[ENTRÉE] POUR DÉMARRER LA SESSION</p>
         </div>
-        <br>
-        <p>[ENTRÉE] POUR VALIDER ET DEMARRER LE SERVICE</p>
     </div>
 
     <!-- ECRAN 3 : JEU PRINCIPAL (CAISSE) -->
     <div id="main-caisse-screen" class="screen">
         <div class="header-bar">
-            <span>CAISSE N°4 - OP: <span id="op-id">9999</span></span>
-            <span>CLIENTS EN ATTENTE: <span id="queue-count">0</span></span>
-            <span id="clock-main">08:00</span>
+            <span>CAISSE 04 | OPÉRATEUR: <span id="op-id"></span></span>
+            <div class="header-right">
+                <span>ATTENTE: <span id="queue-count" style="font-weight:bold; color:#e60000;">0</span></span>
+                <span id="clock-main" style="font-weight:bold; color:#212529;">08:00</span>
+            </div>
         </div>
 
         <div class="main-caisse-area">
             <!-- Ticket -->
-            <div class="ticket-area">
-                <h3>TICKET EN COURS</h3>
-                <hr style="border:1px dashed #0f0; margin: 10px 0;">
+            <div class="ticket-container">
+                <div class="ticket-header">
+                    TICKET DE CAISSE<br><small>NOZ ARRIVAGES</small>
+                </div>
                 <ul id="ticket-lines" class="ticket-lines">
-                    <!-- Lignes de ticket -->
+                    <!-- Lignes injectées via JS -->
                 </ul>
-                <div class="ticket-total">
-                    TOTAL: <span id="ticket-total-val">0.00</span> €
+                <div class="ticket-total-box">
+                    <span>A PAYER</span>
+                    <span><span id="ticket-total-val">0.00</span> €</span>
                 </div>
             </div>
 
             <!-- Infos / Saisie -->
             <div class="info-area">
-                <div class="current-input-box">
-                    <span id="main-input-display"></span><span class="blink-cursor">_</span>
+                <div class="current-input-box" id="main-input-container">
+                    <span id="main-input-display"></span><span style="animation: blink 1s step-end infinite;">_</span>
                 </div>
 
                 <div class="event-box">
-                    <h3 id="event-title">STATUT: ATTENTE CLIENT</h3>
-                    <p id="event-desc">Appuyez sur [ESPACE] pour appeler le client suivant quand il y en a en attente.</p>
-
-                    <div id="client-sprite" class="client-sprite">
-                        <!-- Art ASCII du client / tapis -->
+                    <div class="event-header" id="event-title">STATUT: CAISSE OUVERTE</div>
+                    <div class="event-content" id="event-content-box">
+                        <div id="event-desc" style="margin-bottom:15px; color:#6c757d;">Appuyez sur ESPACE pour appeler le client suivant.</div>
+                        <div id="client-sprite" class="client-sprite">
+                            <!-- Infos produit JS -->
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
         <div class="footer-shortcuts">
-            <span><span class="shortcut">ENTRÉE</span> VALIDER CODE</span>
+            <span><span class="shortcut">ENTRÉE</span> VALIDER</span>
             <span><span class="shortcut">+</span> ENCAISSER</span>
-            <span><span class="shortcut">SUPPR</span> ANNULER ARTICLE</span>
+            <span><span class="shortcut">SUPPR</span> ANNULER LIGNE</span>
             <span><span class="shortcut">ESPACE</span> APPELER CLIENT</span>
-            <span><span class="shortcut">F11</span> PLEIN ECRAN</span>
         </div>
     </div>
 
     <!-- ECRAN 4 : FIN DE JOURNEE -->
     <div id="end-screen" class="screen">
         <div class="header-bar">
-            <span><span class="title-noz">NOZ</span> OS - FIN DE SERVICE</span>
-            <span id="clock-end">19:00</span>
+            <span><span class="title-noz">NOZ</span> OS - CLÔTURE</span>
         </div>
-        <div style="text-align:center; margin-top:50px;">
-            <h2>BILAN DE LA JOURNÉE</h2>
-            <br>
-            <p id="end-stats"></p>
-            <br><br>
-            <p>[F5] POUR RECOMMENCER UNE JOURNÉE</p>
+        <div class="login-box" style="width:600px;">
+            <h2 style="margin-bottom:20px;">BILAN DE SESSION</h2>
+            <div id="end-stats" style="text-align:left; background:#f8f9fa; padding:20px; border-radius:5px; margin-bottom:20px; font-size:1.1em; line-height:1.6;">
+                <!-- Injecté par JS -->
+            </div>
+            <p class="helper-text">[F5] POUR RETOURNER AU HUB</p>
         </div>
     </div>
 
-    <!-- Modale d'alerte (Imprévus) -->
+    <!-- Modale Alerte -->
     <div id="alert-modal" class="alert-overlay hidden">
         <div class="alert-box">
-            <h2 id="alert-title">ERREUR SYSTEME</h2>
-            <p id="alert-msg">Le lecteur code-barre est bloqué.</p>
-            <br>
-            <p id="alert-action" style="font-size:0.8em; color:#aaa;">[APPUYEZ SUR 'R' POUR REINITIALISER LE ROULEAU]</p>
+            <div class="alert-header">ERREUR MATÉRIELLE</div>
+            <div class="alert-body">
+                Le rouleau de ticket de caisse est coincé ou vide. L'imprimante est bloquée.
+            </div>
+            <div class="alert-footer">
+                Veuillez appuyer sur la touche [ R ] de votre clavier pour changer le rouleau.
+            </div>
         </div>
     </div>
 

@@ -1,197 +1,24 @@
-/* Base Styles */
+/* Base Styles - UI Logiciel Moderne */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Space+Mono&display=swap');
+
 * {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-    font-family: 'Consolas', 'Courier New', monospace; /* Police terminal */
-    user-select: none; /* Empêcher la sélection de texte comme sur un vrai logiciel */
+    user-select: none;
+    font-family: 'Roboto', sans-serif;
 }
 
 body {
-    background-color: #000; /* Fond noir profond */
-    color: #0f0; /* Texte vert fluo façon terminal rétro/entreprise */
+    background-color: #e9ecef; /* Gris clair professionnel */
+    color: #343a40;
     height: 100vh;
-    overflow: hidden; /* Empêcher le scroll */
+    overflow: hidden;
     display: flex;
     flex-direction: column;
 }
 
-/* Écrans du jeu */
-.screen {
-    display: none;
-    width: 100%;
-    height: 100%;
-    padding: 20px;
-    flex-direction: column;
-}
-
-.screen.active {
-    display: flex;
-}
-
-/* Header commun */
-.header-bar {
-    border-bottom: 2px solid #0f0;
-    padding-bottom: 10px;
-    margin-bottom: 20px;
-    display: flex;
-    justify-content: space-between;
-    font-size: 1.2em;
-    font-weight: bold;
-}
-
-.title-noz {
-    color: #ff0000; /* Le rouge NOZ */
-    background-color: #ffff00; /* Fond jaune NOZ */
-    padding: 0 5px;
-    letter-spacing: 2px;
-}
-
-/* --- ECRAN LOGIN --- */
-#login-screen {
-    justify-content: center;
-    align-items: center;
-}
-
-.login-box {
-    border: 2px solid #0f0;
-    padding: 40px;
-    text-align: center;
-    width: 400px;
-}
-
-.login-box h1 { margin-bottom: 30px; }
-.login-box p { margin-bottom: 20px; }
-.login-input {
-    background: transparent;
-    border: none;
-    border-bottom: 2px solid #0f0;
-    color: #0f0;
-    font-size: 1.5em;
-    text-align: center;
-    width: 200px;
-    outline: none;
-    margin-bottom: 20px;
-}
-.blink-cursor { animation: blink 1s step-end infinite; }
-@keyframes blink { 50% { opacity: 0; } }
-
-/* --- ECRAN FOND DE CAISSE --- */
-#fond-caisse-screen .form-group {
-    margin-bottom: 20px;
-    font-size: 1.2em;
-}
-#fond-caisse-screen input {
-    background: transparent;
-    border: 1px solid #0f0;
-    color: #0f0;
-    padding: 5px;
-    width: 150px;
-    font-size: 1em;
-}
-
-/* --- ECRAN CAISSE (JEU PRINCIPAL) --- */
-.main-caisse-area {
-    display: flex;
-    flex-grow: 1;
-    gap: 20px;
-}
-
-.ticket-area {
-    width: 40%;
-    border: 1px solid #0f0;
-    display: flex;
-    flex-direction: column;
-    padding: 10px;
-}
-
-.ticket-lines {
-    flex-grow: 1;
-    overflow-y: auto;
-    list-style: none;
-}
-.ticket-line {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 5px;
-}
-.ticket-line.cancelled {
-    text-decoration: line-through;
-    color: #555;
-}
-
-.ticket-total {
-    border-top: 1px dashed #0f0;
-    padding-top: 10px;
-    font-size: 1.5em;
-    text-align: right;
-}
-
-.info-area {
-    width: 60%;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
-.current-input-box {
-    border: 2px solid #0f0;
-    padding: 20px;
-    font-size: 2em;
-    text-align: right;
-    min-height: 80px;
-}
-
-.event-box {
-    flex-grow: 1;
-    border: 1px solid #0f0;
-    padding: 15px;
-    background-color: #001a00;
-}
-
-.client-sprite {
-    text-align: center;
-    margin-top: 20px;
-    font-size: 0.9em;
-    white-space: pre; /* Pour l'art ASCII */
-}
-
-/* Raccourcis claviers footer */
-.footer-shortcuts {
-    margin-top: 20px;
-    border-top: 2px solid #0f0;
-    padding-top: 10px;
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.9em;
-}
-.shortcut {
-    background-color: #0f0;
-    color: #000;
-    padding: 2px 5px;
-    font-weight: bold;
-}
-
-/* Modale Alerte/Erreur */
-.alert-overlay {
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.8);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-}
-.alert-overlay.hidden { display: none; }
-.alert-box {
-    border: 2px solid #f00;
-    background: #200;
-    color: #f00;
-    padding: 30px;
-    text-align: center;
-    font-size: 1.5em;
-}
-/* Quelques animations CSS pour polir (flash scan) */
+/* Flash d'écran au scan */
 body::after {
     content: '';
     position: fixed;
@@ -203,37 +30,319 @@ body::after {
     z-index: 9999;
 }
 body.flash::after {
-    opacity: 0.3;
+    opacity: 0.5;
     transition: none;
 }
 
-/* ECRAN RECRUTEMENT / CREATION PROFIL */
-#register-screen .login-box {
-    width: 600px;
+/* Écrans du jeu */
+.screen {
+    display: none;
+    width: 100%;
+    height: 100%;
+    flex-direction: column;
 }
-.hub-grid {
+.screen.active {
+    display: flex;
+}
+
+/* Header commun (Barre des tâches logicielle) */
+.header-bar {
+    background-color: #ffffff;
+    border-bottom: 2px solid #dee2e6;
+    padding: 15px 25px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    font-size: 1.1em;
+    font-weight: 500;
+    z-index: 10;
+}
+.title-noz {
+    color: #e60000;
+    font-weight: 700;
+    font-size: 1.2em;
+    letter-spacing: 1px;
+}
+.header-right {
     display: flex;
     gap: 20px;
-    margin-top: 50px;
+    color: #6c757d;
+}
+
+/* --- ECRANS CONNEXION / RH / FOND --- */
+#login-screen, #register-screen, #fond-caisse-screen, #end-screen {
     justify-content: center;
+    align-items: center;
+    background-color: #f8f9fa;
+}
+.login-box {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    padding: 40px;
+    text-align: center;
+    width: 450px;
+    border-top: 5px solid #e60000;
+}
+.login-box h1 { margin-bottom: 10px; font-size: 1.8em; color: #212529; }
+.login-box p { color: #6c757d; margin-bottom: 30px; }
+.login-input {
+    width: 100%;
+    padding: 15px;
+    font-size: 1.5em;
+    text-align: center;
+    border: 2px solid #ced4da;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    outline: none;
+    transition: border-color 0.2s;
+    font-family: 'Space Mono', monospace;
+}
+.login-input:focus { border-color: #e60000; }
+.helper-text { font-size: 0.9em; color: #adb5bd; font-weight: 500;}
+
+/* HUB INTRANET */
+#hub-screen .hub-container {
+    padding: 40px;
+    max-width: 1000px;
+    margin: 0 auto;
+    width: 100%;
+}
+.hub-welcome {
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    margin-bottom: 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.hub-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
 }
 .hub-btn {
-    border: 2px solid #0f0;
-    padding: 30px;
-    font-size: 1.5em;
-    background: transparent;
-    color: #0f0;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 40px 20px;
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #495057;
     cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    transition: transform 0.1s, box-shadow 0.1s;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 10px;
-    width: 250px;
+    gap: 15px;
 }
-.hub-btn:hover { background: #002200; }
+.hub-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+    border-color: #e60000;
+    color: #e60000;
+}
 .hub-btn.locked {
-    border-color: #555;
-    color: #555;
+    background: #e9ecef;
+    color: #adb5bd;
     cursor: not-allowed;
+    border-color: #e9ecef;
+    box-shadow: none;
 }
-.hub-btn.locked:hover { background: transparent; }
+.hub-btn.locked:hover { transform: none; }
+.hub-btn .shortcut-key {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    padding: 5px 12px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    color: #6c757d;
+}
+
+/* --- ECRAN CAISSE (MAIN) --- */
+.main-caisse-area {
+    display: flex;
+    flex-grow: 1;
+    padding: 20px;
+    gap: 20px;
+    background-color: #e9ecef;
+}
+
+/* Côté Gauche: Ticket */
+.ticket-container {
+    width: 35%;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.ticket-header {
+    background: #f8f9fa;
+    padding: 15px;
+    text-align: center;
+    border-bottom: 2px dashed #dee2e6;
+    font-family: 'Space Mono', monospace;
+}
+.ticket-lines {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 15px;
+    list-style: none;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.95em;
+}
+.ticket-line {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    color: #212529;
+}
+.ticket-total-box {
+    background: #212529;
+    color: white;
+    padding: 20px;
+    font-size: 1.8em;
+    font-weight: bold;
+    display: flex;
+    justify-content: space-between;
+}
+
+/* Côté Droit: Interface de caisse */
+.info-area {
+    width: 65%;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Affichage principal (Prix / Saisie) */
+.current-input-box {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    padding: 30px;
+    font-size: 3em;
+    font-family: 'Space Mono', monospace;
+    text-align: right;
+    min-height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    border: 2px solid transparent;
+}
+.current-input-box.payment-mode {
+    border-color: #198754;
+    background-color: #f0fdf4;
+}
+
+/* Afficheur Tapis / Evenements */
+.event-box {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+.event-header {
+    background: #f8f9fa;
+    padding: 15px 20px;
+    border-bottom: 1px solid #dee2e6;
+    border-radius: 8px 8px 0 0;
+    font-weight: bold;
+    font-size: 1.2em;
+    color: #495057;
+}
+.event-content {
+    padding: 30px;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+.event-content.error-state {
+    background-color: #fff5f5;
+    color: #e60000;
+}
+.client-sprite {
+    margin-top: 20px;
+    font-size: 1.4em;
+    color: #212529;
+}
+.product-badge {
+    background: #e9ecef;
+    padding: 5px 15px;
+    border-radius: 20px;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.8em;
+    color: #495057;
+    margin-bottom: 10px;
+    display: inline-block;
+}
+
+/* Footer Raccourcis */
+.footer-shortcuts {
+    background: #343a40;
+    color: #f8f9fa;
+    padding: 15px 25px;
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    font-size: 0.9em;
+}
+.shortcut {
+    background: #495057;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-weight: bold;
+    margin-right: 8px;
+    font-family: 'Space Mono', monospace;
+}
+
+/* Modale Alerte (Windows style) */
+.alert-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+.alert-overlay.hidden { display: none; }
+.alert-box {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+    width: 500px;
+    overflow: hidden;
+}
+.alert-header {
+    background: #e60000;
+    color: white;
+    padding: 15px 20px;
+    font-weight: bold;
+    font-size: 1.2em;
+}
+.alert-body {
+    padding: 30px;
+    text-align: center;
+    font-size: 1.2em;
+    color: #212529;
+}
+.alert-footer {
+    background: #f8f9fa;
+    padding: 15px;
+    text-align: center;
+    border-top: 1px solid #dee2e6;
+    color: #6c757d;
+    font-size: 0.9em;
+}

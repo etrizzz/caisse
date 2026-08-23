@@ -497,3 +497,64 @@ function endCaisseSession() {
         [F5] POUR RETOURNER AU HUB INTRANET
     `;
 }
+
+// Petit correctif pour appliquer le style "payment-mode" vert
+const uiValiderSaisie = validerSaisie;
+validerSaisie = function() {
+    uiValiderSaisie();
+}
+
+const uiDemarrerPaiement = demarrerPaiement;
+demarrerPaiement = function() {
+    uiDemarrerPaiement();
+    document.getElementById('main-input-container').classList.add('payment-mode');
+}
+
+const uiValiderMonnaie = validerMonnaie;
+validerMonnaie = function() {
+    uiValiderMonnaie();
+    document.getElementById('main-input-container').classList.remove('payment-mode');
+}
+
+// Mise à jour de l'affichage des événements pour utiliser les nouvelles classes
+const uiDrawTapis = drawTapis;
+drawTapis = function() {
+    uiDrawTapis();
+    const sprite = document.getElementById('client-sprite');
+    if (AppState.caisse.commandeClient.length > 0) {
+        const p = AppState.caisse.commandeClient[0];
+        // Ne redessiner que si on est en mode scan (pas en event)
+        if (AppState.caisse.mode === 'scan') {
+           sprite.innerHTML = `<span style="color:#6c757d; font-size:0.8em; text-transform:uppercase; display:block; margin-bottom:10px;">Article sur le tapis</span><span class="product-badge">${p.code}</span><br><strong>${p.nom}</strong>`;
+        }
+    }
+}
+
+const uiTriggerEvent = triggerEvent;
+triggerEvent = function(type, data = null) {
+    uiTriggerEvent(type, data);
+    const box = document.getElementById('event-content-box');
+    if (type === 'CODE_ILLISIBLE') {
+        box.classList.add('error-state');
+        document.getElementById('event-title').textContent = "ERREUR SCANNER";
+        document.getElementById('event-title').style.backgroundColor = "#e60000";
+        document.getElementById('event-title').style.color = "white";
+        document.getElementById('event-desc').textContent = "Code-barre illisible. Veuillez taper les 13 chiffres manuellement :";
+        document.getElementById('client-sprite').innerHTML = `<strong>${data.nom}</strong><br><br><span style="font-family:'Space Mono'; font-size:1.2em;">Code attendu : ${data.code}</span>`;
+    }
+}
+
+const uiHandleMainInput = handleMainInput;
+handleMainInput = function(e) {
+    uiHandleMainInput(e);
+    // Reset de la boite rouge quand le code est validé
+    if (AppState.caisse.mode === 'scan') {
+        const box = document.getElementById('event-content-box');
+        box.classList.remove('error-state');
+        document.getElementById('event-title').style.backgroundColor = "";
+        document.getElementById('event-title').style.color = "";
+        if(AppState.caisse.queue > 0 && !AppState.caisse.isClientAtRegister) {
+            document.getElementById('event-title').textContent = "CLIENT EN ATTENTE";
+        }
+    }
+}
