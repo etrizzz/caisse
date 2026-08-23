@@ -3,174 +3,143 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NOZ OS - Tycoon Edition</title>
+    <title>NOZ Quantum OS v1.0</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- Background Animé -->
+    <div class="bg-orbs">
+        <div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div>
+    </div>
 
-    <!-- ECRAN BLOQUANT : LOGIN / INIT -->
-    <div id="login-screen">
-        <div class="os-window active" style="width: 450px; position: relative; top: 0; left: 0; transform: none;">
-            <div class="title-bar"><span>NOZ Active Directory</span></div>
-            <div class="window-content" id="login-content">
-                <!-- Injecté par JS -->
+    <!-- AI Assistant -->
+    <div class="glass-panel ai-assistant" id="ai-bot">
+        <div class="ai-header">NOZ-AI SYNC</div>
+        <div id="ai-text">Initialisation des systèmes neuronaux...</div>
+    </div>
+
+    <!-- ECRAN 1: LOGIN -->
+    <div class="screen active" id="login-screen">
+        <div class="glass-panel login-center">
+            <h1 style="font-size:2em; font-weight:300; margin-bottom:10px;">NOZ <span style="color:var(--neon-blue); font-weight:700;">QUANTUM</span></h1>
+            <p style="color:#888; margin-bottom:30px;">IDENTIFICATION BIOMÉTRIQUE / MATRICULE</p>
+            <div id="login-content">
+                <!-- Dynamique JS -->
             </div>
         </div>
     </div>
 
-    <!-- LE BUREAU -->
-    <div id="desktop" class="hidden">
-        <div class="desktop-icon" id="icon-caisse" onclick="openApp('caisse')">
-            <div class="desktop-icon-img">POS</div>
-            <span>Terminal<br>Caisse</span>
-        </div>
-        <div class="desktop-icon locked" id="icon-wms" onclick="openApp('wms')">
-            <div class="desktop-icon-img">WMS</div>
-            <span>Gestion<br>Stocks</span>
-        </div>
-        <div class="desktop-icon locked" id="icon-hr" onclick="openApp('hr')">
-            <div class="desktop-icon-img">RH</div>
-            <span>Ressources<br>Humaines</span>
-        </div>
-        <div class="desktop-icon locked" id="icon-mail" onclick="openApp('mail')">
-            <div class="desktop-icon-img">@</div>
-            <span>Outlook<br>Direction</span>
-        </div>
-    </div>
-
-    <!-- BARRE DES TACHES -->
-    <div id="taskbar" class="hidden">
-        <div class="start-btn">Start</div>
-        <div class="taskbar-items" id="taskbar-items">
-            <!-- Items de fenetres ouvertes -->
-        </div>
-        <div class="tray">
-            <span id="tray-money" style="font-weight:bold; color:#006400;">0.00 €</span>
-            <span id="tray-time">08:00</span>
-        </div>
-    </div>
-
-    <!-- APPLICATION : CAISSE -->
-    <div class="os-window fullscreen" id="app-caisse">
-        <div class="title-bar">
-            <span>NOZ POS Terminal v5.0</span>
-            <div class="title-bar-controls">
-                <div class="title-btn" onclick="closeApp('caisse')">X</div>
+    <!-- ECRAN 2: DASHBOARD (TYCOON HUB) -->
+    <div class="screen" id="hub-screen">
+        <div class="top-bar glass-panel" style="margin:20px;">
+            <div class="logo-area">NOZ <span>Q-OS</span></div>
+            <div class="status-area">
+                <div class="badge" id="hub-grade">Habilitation</div>
+                <div>Opérateur: <strong id="hub-nom" style="color:var(--neon-blue);"></strong></div>
+                <div style="font-family:'Share Tech Mono';">J<span id="hub-jour">1</span> - <span id="hub-time">08:00</span></div>
             </div>
         </div>
-        <div class="caisse-layout">
-            <div class="ticket-panel">
-                <div class="ticket-head">NOZ MAGASIN<br><script>document.write(new Date().toLocaleDateString())</script></div>
-                <ul class="ticket-items" id="ticket-lines"></ul>
-                <div class="ticket-foot"><span>TOTAL TTC</span><span id="ticket-total-val">0.00</span></div>
+
+        <div class="dashboard-grid">
+            <!-- Stats Joueur -->
+            <div class="glass-panel widget">
+                <div class="w-title">COMPTE PERSONNEL</div>
+                <div class="w-value money" id="hub-argent">0.00 €</div>
+                <p style="color:#888;">Salaire en attente : <span id="hub-salaire" style="color:#fff;">0 €</span></p>
+                <div style="margin-top:auto;"><span class="badge" style="border-color:var(--neon-green); color:var(--neon-green);">+<span id="hub-xp">0</span> XP Cumulée</span></div>
             </div>
-            <div class="main-panel">
-                <div class="display-screen" id="main-input-container">
-                    <div id="main-input-display">_</div>
+
+            <!-- Stats Magasin (WMS) -->
+            <div class="glass-panel widget">
+                <div class="w-title">TRÉSORERIE MAGASIN</div>
+                <div class="w-value" id="hub-budget">0.00 €</div>
+                <div style="display:flex; justify-content:space-between; margin-top:10px;">
+                    <span style="color:#888;">Stock Physique :</span>
+                    <strong id="hub-stock" style="color:var(--neon-blue); font-size:1.2em;">0</strong>
                 </div>
-                <div class="action-grid" id="event-content-box">
-                    <table class="data-table">
-                        <thead><tr><th>Code EAN</th><th>Désignation Produit</th><th>Statut</th></tr></thead>
-                        <tbody><tr><td id="grid-ean">-</td><td id="grid-desc">Terminal Prêt. Attente Client.</td><td id="grid-status" style="color:green; font-weight:bold;">OK</td></tr></tbody>
-                    </table>
+                <button class="btn-cyber" style="margin-top:auto;" id="btn-wms" onclick="showScreen('wms')">Ouvrir WMS</button>
+            </div>
+
+            <!-- RH & Réputation -->
+            <div class="glass-panel widget">
+                <div class="w-title">RÉPUTATION & STAFF</div>
+                <div class="w-value" style="color:var(--text-main);" id="hub-rep">100%</div>
+                <div style="display:flex; justify-content:space-between; margin-top:10px;">
+                    <span style="color:#888;">Caissiers Auto :</span>
+                    <strong id="hub-staff" style="font-size:1.2em;">0</strong>
                 </div>
-                <div class="status-bar-caisse">
-                    <span>File: <strong id="queue-count">0</strong> client(s)</span>
-                    <span>Fond théorique: <strong id="fond-caisse-val">150.00</strong></span>
-                    <span>Op: <strong id="op-id"></strong></span>
-                    <span>[ESPACE] Appel Client | [+] Encaisser | [SUPPR] Annuler Ligne</span>
+                <div style="display:flex; gap:10px; margin-top:auto;">
+                    <button class="btn-cyber" style="flex:1;" id="btn-hr" onclick="showScreen('hr')">Gérer RH</button>
+                    <button class="btn-cyber danger" style="flex:1;" id="btn-mail" onclick="showScreen('mail')">Litiges</button>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- APPLICATION : WMS (STOCKS) -->
-    <div class="os-window" id="app-wms" style="width: 700px; height: 450px;">
-        <div class="title-bar">
-            <span>NOZ WMS - Centrale d'Achat</span>
-            <div class="title-bar-controls"><div class="title-btn" onclick="closeApp('wms')">X</div></div>
-        </div>
-        <div class="menu-bar"><span class="menu-item">Commandes</span><span class="menu-item">Fournisseurs</span><span class="menu-item">Inventaire</span></div>
-        <div class="window-content" style="background: white;">
-            <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                <strong>Catalogue Central (Livraison J+1)</strong>
-                <span>Trésorerie Magasin : <strong id="wms-budget">0.00</strong> €</span>
-            </div>
-            <div style="height: 250px; overflow-y:auto; border:2px inset #fff; margin-bottom:10px;">
-                <table class="data-table">
-                    <thead><tr><th>Ref</th><th>Description Palette</th><th>Prix</th><th>Action</th></tr></thead>
-                    <tbody id="wms-table-body">
-                        <!-- Injecté -->
-                    </tbody>
-                </table>
-            </div>
-            <div style="border-top:1px solid #c0c0c0; padding-top:10px;">
-                <strong>Stock actuel en magasin :</strong> <span id="wms-stock-count">0</span> articles physiques restants.
-                <br><small style="color:gray;">Attention, si le stock tombe à zéro, les clients partiront sans rien acheter.</small>
-            </div>
-        </div>
-    </div>
-
-    <!-- APPLICATION : RH (EMBAUCHE CAISSIERS) -->
-    <div class="os-window" id="app-hr" style="width: 500px; height: 350px;">
-        <div class="title-bar">
-            <span>Gestion des Ressources Humaines</span>
-            <div class="title-bar-controls"><div class="title-btn" onclick="closeApp('hr')">X</div></div>
-        </div>
-        <div class="window-content" style="background: white;">
-            <p>Embauchez du personnel pour automatiser les ventes pendant que vous gérez l'entreprise.</p>
-            <br>
-            <table class="data-table">
-                <thead><tr><th>Poste</th><th>Coût Journalier</th><th>Efficacité</th><th>Action</th></tr></thead>
-                <tbody>
-                    <tr><td>Hôte de caisse junior</td><td>45 € / jour</td><td>Lent</td><td><button class="pro-btn" onclick="embaucher('junior')">Embaucher</button></td></tr>
-                    <tr><td>Hôte de caisse pro</td><td>80 € / jour</td><td>Rapide</td><td><button class="pro-btn" onclick="embaucher('pro')">Embaucher</button></td></tr>
-                </tbody>
-            </table>
-            <br>
-            <strong>Effectif actuel :</strong> <span id="hr-staff-count">0</span> employé(s) actif(s).
-        </div>
-    </div>
-
-    <!-- APPLICATION : BUREAU (OUTLOOK) -->
-    <div class="os-window" id="app-mail" style="width: 700px; height: 450px;">
-        <div class="title-bar">
-            <span>Boîte de réception - NOZ Outlook</span>
-            <div class="title-bar-controls"><div class="title-btn" onclick="closeApp('mail')">X</div></div>
-        </div>
-        <div class="window-content" style="padding:0; display:flex;">
-            <div style="width: 200px; border-right: 2px inset #fff; padding:10px; background: white;">
-                <div>> Boîte de réception (1)</div>
-                <div style="color:gray;">> Corbeille</div>
-                <hr style="margin:10px 0;">
-                <div>Réputation Magasin :</div>
-                <strong id="mail-reputation">100%</strong>
-            </div>
-            <div style="flex-grow: 1; padding: 15px; background: white; display: flex; flex-direction: column;">
-                <div style="border-bottom:1px solid #c0c0c0; padding-bottom:10px; margin-bottom:10px;">
-                    <strong>De :</strong> Support Client NOZ<br>
-                    <strong>Objet :</strong> Réclamation<br>
+            <!-- GROS BOUTON CAISSE -->
+            <div class="glass-panel widget" style="grid-column: span 3; flex-direction:row; align-items:center; justify-content:space-between; padding:30px;">
+                <div>
+                    <h2 style="font-size:2em; font-weight:300;">Terminal d'encaissement Holographique</h2>
+                    <p style="color:#888; margin-top:10px;">Prise de poste manuelle. Le temps s'écoule en temps réel.</p>
                 </div>
-                <div id="litige-text" style="flex-grow:1;">Mail text</div>
-                <div style="border-top:1px solid #c0c0c0; padding-top:10px; display:flex; gap:10px;">
-                    <button class="pro-btn" onclick="resoudreLitige('rembourser')">Émettre Avoir (-10€)</button>
-                    <button class="pro-btn" onclick="resoudreLitige('ignorer')">Clôturer (Baisse Rép.)</button>
+                <button class="btn-cyber" style="font-size:1.5em; padding:20px 50px; background:var(--neon-blue); color:#000;" onclick="showScreen('caisse')">LANCER SESSION</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ECRAN 3: CAISSE IMMERSIVE -->
+    <div class="screen" id="caisse-screen">
+        <div class="top-bar glass-panel" style="margin:20px;">
+            <div class="logo-area">TERMINAL <span>CAISSE</span></div>
+            <div class="status-area">
+                <div style="color:#888;">File d'attente: <strong id="caisse-queue" style="color:var(--neon-red); font-size:1.5em;">0</strong></div>
+                <div style="font-family:'Share Tech Mono';">Fonds théorique: <span id="caisse-fond">150.00</span></div>
+            </div>
+        </div>
+
+        <div class="caisse-container">
+            <!-- Ticket Holographique -->
+            <div class="glass-panel ticket-hologram">
+                <div style="text-align:center; padding-bottom:15px; border-bottom:1px solid rgba(255,255,255,0.1);">NOZ TRANSACTION LOG</div>
+                <ul class="ticket-lines" id="ticket-lines"></ul>
+                <div style="font-size:1.5em; display:flex; justify-content:space-between; padding-top:15px; border-top:1px solid rgba(255,255,255,0.1);">
+                    <span>TOTAL</span>
+                    <span id="caisse-total" style="color:var(--neon-green);">0.00 €</span>
+                </div>
+            </div>
+
+            <!-- Scanner & Input -->
+            <div class="scanner-area">
+                <div class="glass-panel scanner-viewport">
+                    <div class="laser-beam" id="laser"></div>
+                    <div class="item-hologram" id="caisse-display">
+                        <h2 id="caisse-desc" style="color:#888;">EN ATTENTE DE CLIENT</h2>
+                        <p id="caisse-ean" style="color:var(--glass-border);">-</p>
+                    </div>
+                </div>
+
+                <div class="glass-panel input-console" id="caisse-input-container">
+                    <span id="caisse-input"></span><span style="animation: blink 1s infinite;">_</span>
                 </div>
             </div>
         </div>
+
+        <div class="shortcuts-bar">
+            <span><span class="shortcut-key">ESPACE</span> Appel Client</span>
+            <span><span class="shortcut-key">ENTRÉE</span> Scan/Valider</span>
+            <span><span class="shortcut-key">+</span> TPE/Paiement</span>
+            <span><span class="shortcut-key">SUPPR</span> Annuler Item</span>
+            <span><span class="shortcut-key">ESC</span> Quitter Terminal</span>
+        </div>
     </div>
 
-    <!-- MODAL ALERTE GENERIQUE -->
-    <div class="alert-overlay" id="alert-modal">
-        <div class="os-window active" style="width: 350px;">
-            <div class="title-bar">
-                <span id="alert-title">Erreur</span>
+    <!-- ECRAN WMS / HR / MAIL (Modèles Génériques par-dessus le Hub) -->
+    <div class="overlay" id="modal-app">
+        <div class="glass-panel" style="width: 800px; max-height: 80vh; display: flex; flex-direction: column;">
+            <div style="padding: 20px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center;">
+                <h2 id="modal-title" style="font-weight:300;">Titre</h2>
+                <button class="btn-cyber" style="padding: 5px 15px;" onclick="closeModal()">Fermer</button>
             </div>
-            <div class="window-content">
-                <p id="alert-msg">Message d'erreur</p>
-                <div style="text-align:center; margin-top:15px;">
-                    <button class="pro-btn" onclick="document.getElementById('alert-modal').classList.remove('active')">OK</button>
-                </div>
+            <div style="padding: 20px; overflow-y: auto;" id="modal-body">
+                <!-- Contenu dynamique -->
             </div>
         </div>
     </div>

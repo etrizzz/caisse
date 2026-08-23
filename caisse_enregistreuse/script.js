@@ -1,419 +1,276 @@
 /**
- * NOZ OS - TYCOON EDITION - CORE LOGIC
+ * NOZ Quantum OS - Core Logic
  */
-
 const nozCatalogue = [
-    { code: "3701234567890", nom: "LOT 300 CURE-DENTS BAMBOU", prix: 0.50 },
-    { code: "8412345678901", nom: "SHAMPOING CHEVAL 5L (ESP)", prix: 2.99 },
-    { code: "5012345678902", nom: "DVD SNOOP DOGG MAC MAC", prix: 0.99 },
-    { code: "4002345678903", nom: "MOUSTARDE ALLEMANDE PERIMEE", prix: 0.20 },
-    { code: "3102345678904", nom: "PANTALON TARTAN T XXL", prix: 4.50 },
-    { code: "3202345678905", nom: "BOITE TUPPERWARE SANS COUVERCLE", prix: 0.30 },
-    { code: "3302345678906", nom: "COQUE IPHONE 3G ROSE", prix: 0.10 }
+    { code: "3701234567890", nom: "LOT 300 CURE-DENTS", prix: 0.50 },
+    { code: "8412345678901", nom: "SHAMPOING CHEVAL 5L", prix: 2.99 },
+    { code: "5012345678902", nom: "DVD SNOOP DOGG", prix: 0.99 },
+    { code: "4002345678903", nom: "MOUSTARDE PERIMEE", prix: 0.20 },
+    { code: "3102345678904", nom: "PANTALON TARTAN", prix: 4.50 },
+    { code: "3202345678905", nom: "BOITE TUPPERWARE", prix: 0.30 },
+    { code: "3302345678906", nom: "COQUE IPHONE 3G", prix: 0.10 }
 ];
 
 const GRADES = [
-    { nom: "Caissier Débutant", xpRequise: 0 },
-    { nom: "Chef de Rayon (WMS)", xpRequise: 150 },
-    { nom: "Responsable RH (Embauche)", xpRequise: 400 },
-    { nom: "Directeur Adjoint (Mails)", xpRequise: 800 },
-    { nom: "PDG NOZ", xpRequise: 2000 }
+    { nom: "OPÉRATEUR JUNIOR", xp: 0, sal: 50 },
+    { nom: "CHEF DE RAYON", xp: 150, sal: 80 },
+    { nom: "RESPONSABLE RH", xp: 400, sal: 120 },
+    { nom: "DIRECTEUR ADJOINT", xp: 800, sal: 200 }
 ];
 
-// --- AUDIO SYSTEM ---
+// STATE MANAGER
+let PlayerData = { matricule:"", xp:0, jour:1, gradeId:0, argentPerso:0, budgetMagasin:2500, reputation:100, stockMagasin:100, staff:0 };
+let AppState = { screen:'init', timeGame: 8*60, tickInterval:null, caisse: { isClient:false, queue:0, input:"", total:0, ticket:[], mode:'scan', commande:[] } };
+
+// AUDIO & EFFECTS
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-const AudioSys = {
-    play: function(type) {
-        if(audioCtx.state === 'suspended') audioCtx.resume();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.connect(gain); gain.connect(audioCtx.destination);
-        if (type === 'scan') {
-            osc.type = 'sine'; osc.frequency.setValueAtTime(1200, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.1);
-        } else if (type === 'error') {
-            osc.type = 'sawtooth'; osc.frequency.setValueAtTime(200, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.4);
-        } else if (type === 'caisse') {
-            osc.type = 'square'; osc.frequency.setValueAtTime(800, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.3);
-            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+function playSound(type) {
+    if(audioCtx.state==='suspended') audioCtx.resume();
+    const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+    o.connect(g); g.connect(audioCtx.destination);
+    if(type==='scan'){ o.type='sine'; o.frequency.setValueAtTime(1500, audioCtx.currentTime); g.gain.setValueAtTime(0.05, audioCtx.currentTime); o.start(); o.stop(audioCtx.currentTime+0.1); }
+    if(type==='error'){ o.type='sawtooth'; o.frequency.setValueAtTime(150, audioCtx.currentTime); g.gain.setValueAtTime(0.1, audioCtx.currentTime); o.start(); o.stop(audioCtx.currentTime+0.3); }
+    if(type==='pay'){ o.type='square'; o.frequency.setValueAtTime(800, audioCtx.currentTime); o.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime+0.3); g.gain.setValueAtTime(0.1, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime+0.3); o.start(); o.stop(audioCtx.currentTime+0.3); }
+}
+
+function flashScreen() { document.body.classList.add('flash'); setTimeout(()=>document.body.classList.remove('flash'),50); }
+
+// AI ASSISTANT
+function triggerAI(msg, duration=4000) {
+    const ai = document.getElementById('ai-bot');
+    document.getElementById('ai-text').innerHTML = msg;
+    ai.classList.add('show');
+    playSound('scan'); // petit bip notif
+    setTimeout(() => ai.classList.remove('show'), duration);
+}
+
+// STORAGE
+function saveGame() { localStorage.setItem('noz_quantum', JSON.stringify(PlayerData)); }
+function loadGame() { const d = localStorage.getItem('noz_quantum'); if(d){ PlayerData=JSON.parse(d); return true;} return false; }
+function calcGrade() { let g=0; GRADES.forEach((gr,i)=>{if(PlayerData.xp>=gr.xp) g=i;}); PlayerData.gradeId=g; }
+
+// NAVIGATION
+function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    document.getElementById(id+'-screen').classList.add('active');
+    AppState.screen = id;
+    if(id==='hub') refreshHub();
+    if(id==='caisse') initCaisse();
+}
+
+function closeModal() { document.getElementById('modal-app').classList.remove('active'); }
+
+// INIT
+window.onload = () => {
+    if(loadGame()) { showScreen('login'); document.getElementById('login-content').innerHTML=`<input type="password" id="login-input" class="cyber-input" placeholder="ENTREZ MATRICULE" autofocus>`; document.getElementById('login-input').onkeydown=(e)=>{if(e.key==='Enter'){if(e.target.value===PlayerData.matricule) startOS(); else{playSound('error'); e.target.value="";}}}; }
+    else { showScreen('login'); document.getElementById('login-content').innerHTML=`<p style="color:#888;margin-bottom:15px;">CRÉATION DE PROFIL</p><input type="text" id="login-input" class="cyber-input" placeholder="VOTRE NOM" autofocus>`; document.getElementById('login-input').onkeydown=(e)=>{if(e.key==='Enter'){PlayerData.nom=e.target.value.trim(); PlayerData.matricule=Math.floor(1000+Math.random()*9000).toString(); saveGame(); alert(`Matricule généré : ${PlayerData.matricule}`); location.reload();}}; }
+};
+
+// CORE OS LOOP
+function startOS() {
+    calcGrade(); showScreen('hub');
+    AppState.tickInterval = setInterval(() => {
+        AppState.timeGame += 2;
+        const h = Math.floor(AppState.timeGame/60).toString().padStart(2,'0'), m = (AppState.timeGame%60).toString().padStart(2,'0');
+        document.getElementById('hub-time').textContent = `${h}:${m}`;
+
+        // Auto-sales (Staff)
+        if(PlayerData.staff>0 && AppState.timeGame%10===0 && PlayerData.stockMagasin>0) {
+            let ventes = Math.min(PlayerData.staff, PlayerData.stockMagasin);
+            PlayerData.stockMagasin -= ventes; PlayerData.budgetMagasin += ventes*2; saveGame(); refreshHub();
         }
-    }
-};
 
-let AppState = {
-    screen: 'init',
-    caisse: {
-        intervalId: null, time: 8*60, endTime: 19*60, fondTheorique: 150, caisseReelle: 0,
-        queue: 0, isClientAtRegister: false, commandeClient: [], ticket: [], total: 0,
-        input: "", mode: "scan", activeEvent: null, patience: 100, patienceInterval: null
-    }
-};
+        // Random AI interventions
+        if(Math.random()<0.02 && AppState.screen==='hub') {
+            if(PlayerData.stockMagasin<50) triggerAI("Attention, le stock physique est critique. Veuillez commander via le WMS.");
+            else triggerAI("Analyse des flux clients en cours... Trafic nominal.");
+        }
 
-let PlayerData = {
-    matricule: "",
-    xp: 0,
-    jour: 1,
-    gradeId: 0,
-    argentPerso: 0, // Le salaire du joueur
-    budgetMagasin: 2500, // Le budget de l'entreprise NOZ
-    reputation: 100,
-    stockMagasin: 100, // Nombre d'articles physiques dispos en rayon
-    staff: 0 // Nombre de caissiers automatisés embauchés
-};
-
-function saveGame() { localStorage.setItem('noz_tycoon_save', JSON.stringify(PlayerData)); }
-function loadGame() {
-    const data = localStorage.getItem('noz_tycoon_save');
-    if (data) { PlayerData = JSON.parse(data); return true; }
-    return false;
-}
-function updateGrade() {
-    let newGradeId = 0;
-    for (let i = 0; i < GRADES.length; i++) { if (PlayerData.xp >= GRADES[i].xpRequise) newGradeId = i; }
-    PlayerData.gradeId = newGradeId;
+        if(AppState.timeGame >= 19*60) endDay();
+    }, 1000);
 }
 
-// --- OS WINDOW MANAGEMENT ---
-let timeGame = 8 * 60; // 08:00
-let osInterval = null;
+function endDay() {
+    clearInterval(AppState.tickInterval);
+    PlayerData.argentPerso += GRADES[PlayerData.gradeId].sal; PlayerData.jour++;
+    AppState.timeGame = 8*60; saveGame();
+    triggerAI(`Fin de la journée. Votre salaire de ${GRADES[PlayerData.gradeId].sal}€ a été versé. Redémarrage des systèmes...`, 5000);
+    setTimeout(()=>location.reload(), 5000);
+}
 
-function initOS() {
-    if (!loadGame()) {
-        document.getElementById('login-screen').classList.remove('hidden');
-        document.getElementById('login-content').innerHTML = `
-            <p>Nouveau profil utilisateur détecté.</p><br>
-            <label>Appuyez sur ENTRÉE pour générer un matricule de session.</label>
-            <input type="text" id="init-input" class="pro-input" autofocus>
+function refreshHub() {
+    document.getElementById('hub-nom').textContent = PlayerData.nom || "Operateur";
+    document.getElementById('hub-grade').textContent = GRADES[PlayerData.gradeId].nom;
+    document.getElementById('hub-jour').textContent = PlayerData.jour;
+    document.getElementById('hub-argent').textContent = PlayerData.argentPerso.toFixed(2) + " €";
+    document.getElementById('hub-salaire').textContent = GRADES[PlayerData.gradeId].sal + " €";
+    document.getElementById('hub-xp').textContent = PlayerData.xp;
+    document.getElementById('hub-budget').textContent = PlayerData.budgetMagasin.toFixed(2) + " €";
+    document.getElementById('hub-stock').textContent = PlayerData.stockMagasin;
+    document.getElementById('hub-rep').textContent = PlayerData.reputation + "%";
+    document.getElementById('hub-staff').textContent = PlayerData.staff;
+
+    document.getElementById('btn-wms').disabled = PlayerData.gradeId < 1;
+    document.getElementById('btn-hr').disabled = PlayerData.gradeId < 2;
+    document.getElementById('btn-mail').disabled = PlayerData.gradeId < 3;
+}
+
+// MODAL APPS (WMS / HR / MAIL)
+function showScreenApp(app) {
+    const mod = document.getElementById('modal-app'); const body = document.getElementById('modal-body');
+    mod.classList.add('active');
+
+    if(app==='wms') {
+        document.getElementById('modal-title').textContent = "WMS - Commandes Pôle Central";
+        body.innerHTML = `
+            <table class="cyber-table">
+                <thead><tr><th>Réf</th><th>Détails Palette</th><th>Prix</th><th>Action</th></tr></thead>
+                <tbody>
+                    <tr><td>PAL-ALI</td><td>Palette Alimentaire (+200 unités)</td><td>150.00 €</td><td><button class="btn-cyber" onclick="buyStock(150, 200)">Acheter</button></td></tr>
+                    <tr><td>PAL-TEX</td><td>Palette Textile (+100 unités)</td><td>250.00 €</td><td><button class="btn-cyber" onclick="buyStock(250, 100)">Acheter</button></td></tr>
+                    <tr><td>PAL-MYS</td><td>Palette Mystère (+50 unités)</td><td>400.00 €</td><td><button class="btn-cyber" onclick="buyStock(400, 50)">Acheter</button></td></tr>
+                </tbody>
+            </table>
         `;
-        document.getElementById('init-input').onkeydown = (e) => {
-            if (e.key === 'Enter') {
-                PlayerData.matricule = Math.floor(1000 + Math.random() * 9000).toString();
-                saveGame(); location.reload();
-            }
-        };
-    } else {
-        document.getElementById('login-screen').classList.remove('hidden');
-        document.getElementById('login-content').innerHTML = `
-            <p>Connexion au domaine NOZ (Matricule requis)</p><br>
-            <input type="password" id="login-input" class="pro-input" autofocus>
+    }
+    if(app==='hr') {
+        document.getElementById('modal-title').textContent = "RH - Embauche Automates";
+        body.innerHTML = `
+            <p style="margin-bottom:20px; color:#888;">Les automates génèrent des ventes sans votre intervention.</p>
+            <table class="cyber-table">
+                <thead><tr><th>Modèle</th><th>Efficacité</th><th>Coût Journalier</th><th>Action</th></tr></thead>
+                <tbody>
+                    <tr><td>Caissier Drone V1</td><td>Lent</td><td>45.00 €</td><td><button class="btn-cyber" onclick="buyStaff(45, 1)">Recruter</button></td></tr>
+                    <tr><td>Caissier Cyborg V2</td><td>Rapide</td><td>80.00 €</td><td><button class="btn-cyber" onclick="buyStaff(80, 2)">Recruter</button></td></tr>
+                </tbody>
+            </table>
         `;
-        document.getElementById('login-input').onkeydown = (e) => {
-            if (e.key === 'Enter') {
-                if (e.target.value === PlayerData.matricule) startDesktop();
-                else alertOS("Erreur d'authentification.");
-            }
-        };
+    }
+    if(app==='mail') {
+        document.getElementById('modal-title').textContent = "OUTLOOK - Gestion Réputation";
+        body.innerHTML = `
+            <div style="background:rgba(0,0,0,0.5); padding:20px; border-radius:8px;">
+                <p style="color:var(--neon-red); margin-bottom:10px;">Message urgent d'un client insatisfait de son produit mystère.</p>
+                <button class="btn-cyber" onclick="resolveMail(true)">Dédommager (-50€) [+Rép]</button>
+                <button class="btn-cyber danger" onclick="resolveMail(false)">Ignorer [-Rép]</button>
+            </div>
+        `;
     }
 }
+const originalShowScreen = showScreen;
+window.showScreen = (id) => { if(['wms','hr','mail'].includes(id)){ showScreenApp(id); } else { originalShowScreen(id); } };
 
-function startDesktop() {
-    document.getElementById('login-screen').classList.add('hidden');
-    document.getElementById('desktop').classList.remove('hidden');
-    document.getElementById('taskbar').classList.remove('hidden');
-    updateGrade(); refreshDesktopIcons();
-
-    osInterval = setInterval(desktopTick, 1000); // Le temps passe toujours sur l'OS
+function buyStock(prix, qty) { if(PlayerData.budgetMagasin>=prix){ PlayerData.budgetMagasin-=prix; PlayerData.stockMagasin+=qty; PlayerData.xp+=10; saveGame(); refreshHub(); triggerAI("Stock approvisionné."); closeModal(); } else triggerAI("Fonds insuffisants."); }
+function buyStaff(prix, eff) { if(PlayerData.budgetMagasin>=prix){ PlayerData.budgetMagasin-=prix; PlayerData.staff+=eff; saveGame(); refreshHub(); triggerAI("Drone recruté avec succès."); closeModal(); } else triggerAI("Fonds insuffisants."); }
+function resolveMail(rembourse) {
+    if(rembourse && PlayerData.budgetMagasin>=50){ PlayerData.budgetMagasin-=50; PlayerData.reputation=Math.min(100,PlayerData.reputation+10); PlayerData.xp+=20;}
+    else if(!rembourse) { PlayerData.reputation-=15; }
+    saveGame(); refreshHub(); closeModal(); triggerAI("Incident clôturé.");
 }
 
-function refreshDesktopIcons() {
-    if (PlayerData.gradeId >= 1) document.getElementById('icon-wms').classList.remove('locked');
-    if (PlayerData.gradeId >= 2) document.getElementById('icon-hr').classList.remove('locked');
-    if (PlayerData.gradeId >= 3) document.getElementById('icon-mail').classList.remove('locked');
-}
-
-function openApp(appId) {
-    if (document.getElementById(`icon-${appId}`).classList.contains('locked')) return;
-    document.getElementById(`app-${appId}`).classList.add('active');
-
-    // Ajout barre des taches
-    if (!document.getElementById(`task-${appId}`)) {
-        document.getElementById('taskbar-items').innerHTML += `<div class="taskbar-item" id="task-${appId}">${appId.toUpperCase()}</div>`;
-    }
-
-    // Init spécifique
-    if (appId === 'caisse') initCaisseApp();
-    if (appId === 'wms') { document.getElementById('wms-budget').textContent = PlayerData.budgetMagasin.toFixed(2); document.getElementById('wms-stock-count').textContent = PlayerData.stockMagasin; }
-    if (appId === 'hr') { document.getElementById('hr-staff-count').textContent = PlayerData.staff; }
-    if (appId === 'mail') { genererLitige(); }
-}
-
-function closeApp(appId) {
-    document.getElementById(`app-${appId}`).classList.remove('active');
-    const task = document.getElementById(`task-${appId}`);
-    if(task) task.remove();
-}
-
-function alertOS(msg) {
-    document.getElementById('alert-msg').textContent = msg;
-    document.getElementById('alert-modal').classList.add('active');
-}
-
-function desktopTick() {
-    timeGame += 2; // 2 minutes in-game par seconde réelle
-
-    // MàJ Heure & Argent
-    const h = Math.floor(timeGame/60).toString().padStart(2,'0');
-    const m = (timeGame%60).toString().padStart(2,'0');
-    document.getElementById('tray-time').textContent = `${h}:${m}`;
-    document.getElementById('tray-money').textContent = `${PlayerData.argentPerso.toFixed(2)} €`;
-
-    // Si on a du staff, le stock baisse automatiquement et le budget augmente
-    if (PlayerData.staff > 0 && timeGame % 10 === 0 && PlayerData.stockMagasin > 0) {
-        let ventes = Math.min(PlayerData.staff, PlayerData.stockMagasin);
-        PlayerData.stockMagasin -= ventes;
-        PlayerData.budgetMagasin += ventes * 2; // Chaque article rapporte ~2e moy au magasin
-        saveGame();
-    }
-
-    if (timeGame >= 19*60) {
-        endOfDay();
-    }
-}
-
-// --- WMS (STOCKS) & RH ---
-const wmsCatalogue = [
-    { ref: "PAL-ALI", nom: "Palette Alimentaire", qty: 200, prix: 150 },
-    { ref: "PAL-TEX", nom: "Palette Vêtements", qty: 100, prix: 250 },
-    { ref: "PAL-MYS", nom: "Palette Mystère", qty: 50, prix: 400 }
-];
-
-// Injecter dynamiquement les lignes WMS
-function renderWMS() {
-    const tbody = document.getElementById('wms-table-body');
-    if (!tbody) return;
-    tbody.innerHTML = '';
-    wmsCatalogue.forEach(p => {
-        tbody.innerHTML += `<tr>
-            <td>${p.ref}</td><td>${p.nom} (+${p.qty} unités en rayon)</td><td>${p.prix.toFixed(2)} €</td>
-            <td><button class="pro-btn" onclick="commanderPalette('${p.ref}')">Acheter</button></td>
-        </tr>`;
-    });
-}
-setTimeout(renderWMS, 500);
-
-function commanderPalette(ref) {
-    const pal = wmsCatalogue.find(p => p.ref === ref);
-    if (PlayerData.budgetMagasin >= pal.prix) {
-        PlayerData.budgetMagasin -= pal.prix;
-        PlayerData.stockMagasin += pal.qty; // Livraison instantanée pour simplifier le gameplay
-        PlayerData.xp += 10;
-        saveGame();
-        document.getElementById('wms-budget').textContent = PlayerData.budgetMagasin.toFixed(2);
-        document.getElementById('wms-stock-count').textContent = PlayerData.stockMagasin;
-        alertOS(`Commande validée. ${pal.qty} articles ajoutés au stock magasin.`);
-    } else {
-        alertOS("Refus comptabilité : Budget NOZ insuffisant !");
-    }
-}
-
-// RH Embauche
-function embaucher(type) {
-    let cout = type === 'junior' ? 45 : 80;
-    // Les salaires des employés sont payés par le budget magasin NOZ
-    if (PlayerData.budgetMagasin >= cout) {
-        PlayerData.budgetMagasin -= cout;
-        PlayerData.staff += (type === 'junior' ? 1 : 2); // Le pro vaut 2 juniors
-        saveGame();
-        document.getElementById('hr-staff-count').textContent = PlayerData.staff;
-        alertOS(`Contrat signé. Salaire de ${cout}€ prélevé sur le budget magasin.`);
-    } else {
-        alertOS("Refus RH : Budget magasin insuffisant.");
-    }
-}
-
-// BUREAU MAIL
-let litigesFaits = 0;
-function genererLitige() {
-    if (litigesFaits >= 3) { document.getElementById('litige-text').innerHTML = "Aucun nouveau message."; return; }
-    document.getElementById('litige-text').innerHTML = "Client très mécontent. Il a glissé sur une palette de l'entrepôt.<br><br>Gérez le litige urgemment.";
-    document.getElementById('mail-reputation').textContent = PlayerData.reputation + "%";
-}
-function resoudreLitige(action) {
-    if (litigesFaits >= 3) return;
-    if (action === 'rembourser') { PlayerData.budgetMagasin -= 50; PlayerData.reputation = Math.min(100, PlayerData.reputation+10); PlayerData.xp += 20; }
-    else { PlayerData.reputation -= 20; }
-    litigesFaits++; saveGame(); genererLitige();
-}
-
-// --- CAISSE APP LOGIC ---
-function initCaisseApp() {
-    document.getElementById('op-id').textContent = PlayerData.matricule;
-    AppState.caisse.isClientAtRegister = false;
-    AppState.caisse.queue = 0;
-    AppState.caisse.ticket = [];
-    AppState.caisse.total = 0;
-    AppState.caisse.mode = 'scan';
-    AppState.caisse.input = "";
-    updateInputDisplay();
-    updateCaisseUI();
+// CAISSE
+function initCaisse() {
+    AppState.caisse.isClient = false; AppState.caisse.queue = 0; AppState.caisse.input = ""; AppState.caisse.ticket = []; AppState.caisse.total = 0; AppState.caisse.mode = 'scan';
+    document.getElementById('caisse-desc').textContent = "EN ATTENTE D'APPEL"; document.getElementById('caisse-desc').style.color = "#888";
+    document.getElementById('caisse-ean').textContent = "-";
+    document.getElementById('laser').classList.remove('active');
+    updateCaisseUI(); triggerAI("Interface d'encaissement prête.");
 }
 
 function updateCaisseUI() {
-    document.getElementById('queue-count').textContent = AppState.caisse.queue;
-    if (AppState.caisse.commandeClient.length === 0) {
-        document.getElementById('grid-ean').textContent = "-";
-        document.getElementById('grid-desc').textContent = "Attente nouveau client [Espace]";
-        document.getElementById('grid-status').textContent = "OK";
-    }
+    document.getElementById('caisse-input').textContent = AppState.caisse.input;
+    document.getElementById('caisse-queue').textContent = AppState.caisse.queue;
+    document.getElementById('caisse-total').textContent = AppState.caisse.total.toFixed(2) + " €";
+    document.getElementById('ticket-lines').innerHTML = AppState.caisse.ticket.map(p=>`<li><span>${p.nom.substring(0,20)}</span><span>${p.prix.toFixed(2)}</span></li>`).join('');
 }
 
-function updateTicketDisplay() {
-    const ul = document.getElementById('ticket-lines'); ul.innerHTML = '';
-    AppState.caisse.ticket.forEach(p => { ul.innerHTML += `<li><span>${p.nom.substring(0,18)}</span><span>${p.prix.toFixed(2)}</span></li>`; });
-    ul.scrollTop = ul.scrollHeight;
-    document.getElementById('ticket-total-val').textContent = AppState.caisse.total.toFixed(2);
-}
-
-function updateInputDisplay() { document.getElementById('main-input-display').textContent = AppState.caisse.input + "_"; }
-
-// Appel Client
-function appelerClient() {
-    if (AppState.caisse.isClientAtRegister) return;
-
-    // Le magasin attire des clients selon sa réputation et son stock
-    if (PlayerData.stockMagasin <= 0) {
-        alertOS("Rayons vides ! Les clients font demi-tour. Achetez des stocks via NOZ WMS.");
-        return;
-    }
-
-    AppState.caisse.isClientAtRegister = true;
-    AppState.caisse.mode = 'scan';
-    AppState.caisse.ticket = []; AppState.caisse.total = 0; updateTicketDisplay();
-
-    const nb = Math.floor(Math.random()*4)+2; AppState.caisse.commandeClient = [];
-    for(let i=0; i<nb; i++) AppState.caisse.commandeClient.push(nozCatalogue[Math.floor(Math.random()*nozCatalogue.length)]);
-
-    nextArticle();
-}
-
-function nextArticle() {
-    if (AppState.caisse.commandeClient.length === 0) {
-        document.getElementById('grid-ean').textContent = "-";
-        document.getElementById('grid-desc').textContent = "Tapis vide. Paiement requis [+]";
-        return;
-    }
-    const p = AppState.caisse.commandeClient[0];
-    document.getElementById('grid-ean').textContent = p.code;
-    document.getElementById('grid-desc').textContent = p.nom;
-}
-
-// Touches Caisse
 document.addEventListener('keydown', (e) => {
-    // Ne gérer que si l'app caisse est ouverte et au premier plan (simplifié)
-    if (!document.getElementById('app-caisse').classList.contains('active')) return;
-
-    const c = AppState.caisse;
-    if (c.mode === 'scan') {
-        if (e.key === ' ' && !c.isClientAtRegister) appelerClient();
-        else if (e.key >= '0' && e.key <= '9') { c.input += e.key; updateInputDisplay(); }
-        else if (e.key === 'Backspace') { c.input = c.input.slice(0, -1); updateInputDisplay(); }
-        else if (e.key === 'Enter') validerScan();
-        else if (e.key === '+') {
-            if (c.ticket.length > 0 && c.commandeClient.length === 0) demarrerPaiement();
+    if(AppState.screen==='caisse') {
+        if(e.key==='Escape') showScreen('hub');
+        const c = AppState.caisse;
+        if(c.mode==='scan') {
+            if(e.key===' ' && !c.isClient) callClient();
+            else if(e.key>='0' && e.key<='9') { c.input+=e.key; updateCaisseUI(); }
+            else if(e.key==='Backspace') { c.input=c.input.slice(0,-1); updateCaisseUI(); }
+            else if(e.key==='Enter') scanItem();
+            else if(e.key==='+' && c.ticket.length>0 && c.commande.length===0) goPayment();
+            else if(e.key==='Delete' && c.ticket.length>0) { const i=c.ticket.pop(); c.total-=i.prix; updateCaisseUI(); playSound('error'); triggerAI("Article annulé."); }
+        } else if (c.mode==='pay') {
+            if((e.key>='0' && e.key<='9') || e.key==='.') { c.input+=e.key; updateCaisseUI(); }
+            else if(e.key==='Backspace') { c.input=c.input.slice(0,-1); updateCaisseUI(); }
+            else if(e.key==='Enter') validPayment();
         }
-    } else if (c.mode === 'payment') {
-        if (e.key >= '0' && e.key <= '9' || e.key === '.') { c.input += e.key; updateInputDisplay(); }
-        else if (e.key === 'Backspace') { c.input = c.input.slice(0, -1); updateInputDisplay(); }
-        else if (e.key === 'Enter') validerPaiement();
     }
 });
 
-function validerScan() {
-    const c = AppState.caisse;
-    if (c.commandeClient.length === 0) return;
-    const p = c.commandeClient[0];
+setInterval(()=>{ if(AppState.screen==='caisse' && Math.random()<0.15){ AppState.caisse.queue+=Math.floor(Math.random()*2)+1; updateCaisseUI(); } }, 1000);
 
-    // Scan auto ou manuel
-    if (!c.input || c.input === p.code) {
-        AudioSys.play('scan');
-        document.body.classList.add('flash'); setTimeout(()=>document.body.classList.remove('flash'),50);
-        c.ticket.push(p); c.total += p.prix; updateTicketDisplay();
-        c.commandeClient.shift();
-        PlayerData.stockMagasin--; // Deduire du vrai stock
-        c.input = ""; updateInputDisplay();
-        nextArticle();
+function callClient() {
+    if(PlayerData.stockMagasin<=0) { triggerAI("Rayons vides. Les clients repartent."); return; }
+    AppState.caisse.isClient = true; AppState.caisse.commande = [];
+    const nb=Math.floor(Math.random()*4)+2; for(let i=0;i<nb;i++) AppState.caisse.commande.push(nozCatalogue[Math.floor(Math.random()*nozCatalogue.length)]);
+    document.getElementById('laser').classList.add('active');
+    showNextItem();
+}
+
+function showNextItem() {
+    if(AppState.caisse.commande.length===0) {
+        document.getElementById('caisse-desc').textContent = "PAIEMENT REQUIS [+]"; document.getElementById('caisse-desc').style.color = "var(--neon-blue)";
+        document.getElementById('caisse-ean').textContent = ""; document.getElementById('laser').classList.remove('active');
+        return;
+    }
+    const p = AppState.caisse.commande[0];
+    document.getElementById('caisse-desc').textContent = p.nom; document.getElementById('caisse-desc').style.color = "#fff";
+    const isIllisible = Math.random() < 0.2;
+    document.getElementById('caisse-ean').textContent = isIllisible ? "ILLISIBLE" : p.code;
+    if(isIllisible) {
+        document.getElementById('caisse-ean').style.color="var(--neon-red)";
+        triggerAI(`Erreur de lecture EAN. Le code de "${p.nom}" est : ${p.code}. Saisie manuelle requise.`);
     } else {
-        AudioSys.play('error'); c.input = ""; updateInputDisplay();
+        document.getElementById('caisse-ean').style.color="var(--glass-border)";
     }
 }
 
-// TPE Paiement CB ou Especes
-let aRendreEnCours = 0;
-let modePaiement = "ESPECES";
-function demarrerPaiement() {
-    const c = AppState.caisse; c.mode = 'payment'; c.input = ""; updateInputDisplay();
-    document.getElementById('main-input-container').classList.add('payment');
+function scanItem() {
+    if(AppState.caisse.commande.length===0) return;
+    const p = AppState.caisse.commande[0];
+    const eanUI = document.getElementById('caisse-ean').textContent;
 
-    modePaiement = Math.random() > 0.5 ? "CB" : "ESPECES";
-
-    if (modePaiement === "CB") {
-        document.getElementById('grid-desc').innerHTML = `<strong>TPE : CLIENT PAYE PAR CARTE</strong><br>Saisir montant exact : ${c.total.toFixed(2)}`;
-    } else {
-        const donne = [5, 10, 20, 50, 100].find(x => x >= c.total) || (Math.ceil(c.total/50)*50);
-        aRendreEnCours = donne - c.total;
-        document.getElementById('grid-desc').innerHTML = `<strong>ESPECES : CLIENT DONNE ${donne.toFixed(2)}</strong><br>Saisir rendu monnaie exact.`;
-    }
+    if((eanUI!=="ILLISIBLE" && !AppState.caisse.input) || (AppState.caisse.input===p.code)) {
+        playSound('scan'); flashScreen(); PlayerData.stockMagasin--;
+        AppState.caisse.ticket.push(p); AppState.caisse.total+=p.prix;
+        AppState.caisse.commande.shift(); AppState.caisse.input="";
+        updateCaisseUI(); showNextItem();
+    } else { playSound('error'); AppState.caisse.input=""; updateCaisseUI(); }
 }
 
-function validerPaiement() {
-    const s = parseFloat(AppState.caisse.input); if (isNaN(s)) return;
-    const c = AppState.caisse;
+let cbMode = true; let aRendre = 0;
+function goPayment() {
+    AppState.caisse.mode='pay'; AppState.caisse.input=""; cbMode = Math.random()>0.5;
+    const inputContainer = document.getElementById('caisse-input-container');
+    inputContainer.style.borderColor = "var(--neon-green)";
+    inputContainer.style.color = "var(--neon-green)";
 
-    AudioSys.play('caisse');
-    document.getElementById('main-input-container').classList.remove('payment');
-
-    if (modePaiement === "CB") {
-        // En CB, il faut taper le montant EXACT de la facture sur le TPE virtuel
-        if (Math.round(s * 100) === Math.round(c.total * 100)) {
-            PlayerData.budgetMagasin += c.total; PlayerData.xp += 10;
-        } else {
-            alertOS("Erreur TPE ! Le client a été mal débité.");
-            PlayerData.reputation -= 5;
-        }
+    if(cbMode) {
+        document.getElementById('caisse-desc').textContent = `TPE - SAISIR: ${AppState.caisse.total.toFixed(2)}`;
+        document.getElementById('caisse-ean').textContent = "Paiement CB";
     } else {
-        // En ESPECES, il faut rendre la monnaie
-        const att = Math.round(aRendreEnCours * 100); const res = Math.round(s * 100);
-        PlayerData.budgetMagasin += c.total + ((att===res) ? 0 : (att-res)/100);
-        PlayerData.xp += 10;
+        const d = [5,10,20,50,100].find(x=>x>=AppState.caisse.total) || Math.ceil(AppState.caisse.total/50)*50; aRendre=d-AppState.caisse.total;
+        document.getElementById('caisse-desc').textContent = `ESPECES - DONNÉ: ${d.toFixed(2)}`;
+        document.getElementById('caisse-ean').textContent = `Saisir Rendu Exact`;
     }
-
-    c.isClientAtRegister = false; c.ticket = []; c.total = 0; updateTicketDisplay();
-    c.input = ""; updateInputDisplay(); c.mode = 'scan';
     updateCaisseUI();
 }
 
-// FIN DE JOURNEE
-function endOfDay() {
-    clearInterval(osInterval);
+function validPayment() {
+    const s = parseFloat(AppState.caisse.input); if(isNaN(s)) return;
+    playSound('pay');
+    document.getElementById('caisse-input-container').style.borderColor = "var(--glass-border)";
+    document.getElementById('caisse-input-container').style.color = "var(--text-main)";
 
-    // Le joueur reçoit un salaire !
-    let salaire = 50; // Base
-    if (PlayerData.gradeId >= 1) salaire = 80;
-    if (PlayerData.gradeId >= 2) salaire = 120;
-    if (PlayerData.gradeId >= 3) salaire = 200;
+    if(cbMode) { if(Math.round(s*100)===Math.round(AppState.caisse.total*100)){ PlayerData.budgetMagasin+=AppState.caisse.total; PlayerData.xp+=10; triggerAI("Paiement accepté."); } else { PlayerData.reputation-=5; triggerAI("Erreur TPE. Client facturé incorrectement."); } }
+    else { const at=Math.round(aRendre*100), re=Math.round(s*100); PlayerData.budgetMagasin+=AppState.caisse.total + (at===re?0:(at-re)/100); PlayerData.xp+=10; triggerAI("Monnaie rendue."); }
 
-    PlayerData.argentPerso += salaire;
-    PlayerData.jour++;
-    saveGame();
-
-    document.getElementById('login-screen').classList.remove('hidden');
-    document.getElementById('desktop').classList.add('hidden');
-    document.getElementById('taskbar').classList.add('hidden');
-
-    document.getElementById('login-content').innerHTML = `
-        <h3>Fin de la journée ${PlayerData.jour - 1}</h3>
-        <hr style="margin:10px 0;">
-        <p>Salaire versé sur votre compte personnel : <strong>+${salaire} €</strong></p>
-        <p>Bilan Trésorerie Magasin NOZ : <strong>${PlayerData.budgetMagasin.toFixed(2)} €</strong></p>
-        <p>Stock restant en réserve : <strong>${PlayerData.stockMagasin} articles</strong></p>
-        <br><br>
-        <button class="pro-btn" onclick="location.reload()">Prendre son poste (Jour ${PlayerData.jour})</button>
-    `;
+    AppState.caisse.isClient=false; AppState.caisse.ticket=[]; AppState.caisse.total=0; AppState.caisse.input=""; AppState.caisse.mode='scan';
+    showNextItem(); updateCaisseUI(); calcGrade(); saveGame();
 }
-window.onload = initOS;
