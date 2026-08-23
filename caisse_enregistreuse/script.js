@@ -1,124 +1,9 @@
-// --- CONFIGURATION ET ETAT GLOBAL ---
-let state = {
-    screen: 'login', // login, fond, main, end
-    matricule: '',
-    fondCaisse: 0,
-    caisseReelle: 0, // L'argent physiquement dans le tiroir
-    timeMinutes: 8 * 60, // 08:00
-    timeEndMinutes: 19 * 60, // 19:00
-    gameSpeed: 10, // 1 seconde réelle = 10 minutes virtuelles ? Non, c'est trop rapide.
-    // Faisons 1 tick (1 seconde réelle) = 2 minutes in-game
-    // 8h à 19h = 11h = 660 minutes. / 2 = 330 secondes (5.5 minutes la partie)
-    queue: 0,
-    isClientAtRegister: false,
-    ticket: [],
-    totalTicket: 0,
-    mainInput: "",
-    mode: "scan", // scan, payment, event
-    activeEvent: null // stocke l'imprévu en cours
-};
+/**
+ * NOZ OS - Simulateur de Caisse et de Carrière
+ * Refonte d'Architecture
+ */
 
-let gameInterval = null;
-
-// --- GESTION DES ECRANS ---
-function showScreen(screenId) {
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.getElementById(screenId + '-screen').classList.add('active');
-    state.screen = screenId;
-}
-
-// --- CLAVIER GLOBAL ---
-document.addEventListener('keydown', (e) => {
-    // Plein écran avec F11 géré par le navigateur par défaut
-
-    if (state.screen === 'login') handleLoginInput(e);
-    else if (state.screen === 'fond') handleFondInput(e);
-    else if (state.screen === 'main') handleMainInput(e);
-});
-
-// --- ECRAN 1: LOGIN ---
-function handleLoginInput(e) {
-    if (e.key === 'Enter') {
-        const val = document.getElementById('login-input').value;
-        if (val.length > 0) {
-            state.matricule = val;
-            document.getElementById('op-id').textContent = val;
-            showScreen('fond');
-            document.getElementById('fond-input').focus();
-        }
-    }
-}
-
-// --- ECRAN 2: FOND DE CAISSE ---
-function handleFondInput(e) {
-    if (e.key === 'Enter') {
-        const val = parseFloat(document.getElementById('fond-input').value.replace(',', '.'));
-        if (!isNaN(val)) {
-            state.fondCaisse = val;
-            state.caisseReelle = val;
-            startGame();
-        }
-    }
-}
-
-// --- BOUCLE PRINCIPALE (TEMPS & CLIENTS) ---
-function startGame() {
-    showScreen('main');
-    updateClockDisplay();
-    updateQueueDisplay();
-    gameInterval = setInterval(gameTick, 1000); // 1 tick par seconde
-}
-
-function gameTick() {
-    // Temps
-    state.timeMinutes += 2; // Avance de 2 minutes in-game
-    updateClockDisplay();
-
-    // Fin de journée ?
-    if (state.timeMinutes >= state.timeEndMinutes) {
-        endGame();
-        return;
-    }
-
-    // Génération de clients (File d'attente)
-    // Plus il est tard, plus y'a de monde ? On fait aléatoire
-    if (Math.random() < 0.15) { // 15% de chance d'avoir 1 ou 2 clients en plus par tick
-        state.queue += Math.floor(Math.random() * 2) + 1;
-        updateQueueDisplay();
-    }
-}
-
-function updateClockDisplay() {
-    const h = Math.floor(state.timeMinutes / 60).toString().padStart(2, '0');
-    const m = (state.timeMinutes % 60).toString().padStart(2, '0');
-    const timeStr = `${h}:${m}`;
-    document.getElementById('clock-main').textContent = timeStr;
-}
-
-function updateQueueDisplay() {
-    document.getElementById('queue-count').textContent = state.queue;
-}
-
-// --- FIN DE JOURNEE ---
-function endGame() {
-    clearInterval(gameInterval);
-    showScreen('end');
-
-    // Calcul de l'écart de caisse
-    // Le fond initial + l'argent encaissé - la monnaie rendue
-    // Pour simplifier, on assume que la caisseRelle a été bien tenue,
-    // l'écart vient des erreurs de rendu de monnaie du joueur.
-    const ecart = state.caisseReelle - state.fondCaisse; // (On ajoutera la vraie logique après)
-
-    document.getElementById('end-stats').innerHTML = `
-        FOND INITIAL: ${state.fondCaisse.toFixed(2)} €<br>
-        CAISSE FINALE: ${state.caisseReelle.toFixed(2)} €<br>
-        <br>
-        >>> VOUS POUVEZ FERMER L'APPLICATION.
-    `;
-}
-
-// --- CATALOGUE NOZ (PRODUITS BIZARRES) ---
+// --- BASE DE DONNÉES / CONFIG ---
 const nozCatalogue = [
     { code: "3701234567890", nom: "LOT 300 CURE-DENTS BAMBOU", prix: 0.50 },
     { code: "8412345678901", nom: "SHAMPOING CHEVAL 5L (ESP)", prix: 2.99 },
@@ -132,266 +17,306 @@ const nozCatalogue = [
     { code: "3602345678909", nom: "LOT 5 CHAUSSETTES (PAS DE PAIRE)", prix: 2.00 }
 ];
 
-// --- GESTION DU CLIENT ET DU SCAN ---
-let commandeEnCours = [];
+const GRADES = [
+    { nom: "STAGIAIRE", xpRequise: 0 },
+    { nom: "HÔTE(SSE) DE CAISSE", xpRequise: 100 },
+    { nom: "CHEF DE RAYON", xpRequise: 300 },
+    { nom: "RESPONSABLE ADJOINT", xpRequise: 600 }
+];
 
-function appelerClient() {
-    if (state.isClientAtRegister) return;
-    if (state.queue <= 0) return;
+// --- GESTION AUDIO ---
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const AudioSys = {
+    play: function(type) {
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
 
-    state.queue--;
-    updateQueueDisplay();
-    state.isClientAtRegister = true;
+        if (type === 'scan') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(1200, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+        } else if (type === 'error') {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.4);
+        } else if (type === 'caisse') {
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.3);
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+        }
+    }
+};
 
-    // Générer liste de courses (3 à 8 articles)
-    const nbArticles = Math.floor(Math.random() * 6) + 3;
-    commandeEnCours = [];
-    for(let i=0; i<nbArticles; i++) {
-        commandeEnCours.push(nozCatalogue[Math.floor(Math.random() * nozCatalogue.length)]);
+// --- SYSTEME DE SAUVEGARDE ET PROFIL ---
+let PlayerData = {
+    nom: "",
+    matricule: "",
+    xp: 0,
+    jour: 1,
+    gradeId: 0
+};
+
+function saveGame() {
+    localStorage.setItem('noz_save_v2', JSON.stringify(PlayerData));
+}
+
+function loadGame() {
+    const data = localStorage.getItem('noz_save_v2');
+    if (data) {
+        PlayerData = JSON.parse(data);
+        return true; // Sauvegarde trouvée
+    }
+    return false; // Nouveau joueur
+}
+
+function updateGrade() {
+    let newGradeId = 0;
+    for (let i = 0; i < GRADES.length; i++) {
+        if (PlayerData.xp >= GRADES[i].xpRequise) {
+            newGradeId = i;
+        }
+    }
+    PlayerData.gradeId = newGradeId;
+}
+
+// ... La suite du script arrive
+
+// --- ETAT GLOBAL DE L'APPLICATION ---
+let AppState = {
+    screen: 'init', // init, register, login, hub, fond, caisse, end
+    caisse: {
+        intervalId: null,
+        time: 8 * 60,
+        endTime: 19 * 60,
+        fondTheorique: 150,
+        caisseReelle: 0,
+        queue: 0,
+        isClientAtRegister: false,
+        commandeClient: [],
+        ticket: [],
+        total: 0,
+        input: "",
+        mode: "scan", // scan, payment, event
+        activeEvent: null
+    }
+};
+
+function showScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(screenId + '-screen').classList.add('active');
+    AppState.screen = screenId;
+}
+
+// --- INITIALISATION DU JEU (LANCEMENT) ---
+function initGame() {
+    if (loadGame()) {
+        // Sauvegarde existante, on passe au login
+        showScreen('login');
+        document.getElementById('login-input').focus();
+    } else {
+        // Pas de sauvegarde, on passe à la RH (Embauche)
+        showScreen('register');
+        document.getElementById('register-input').focus();
+    }
+}
+
+// --- LOGIQUE DES ECRANS (CLAVIER) ---
+document.addEventListener('keydown', (e) => {
+    if (AppState.screen === 'register') handleRegisterInput(e);
+    else if (AppState.screen === 'login') handleLoginInput(e);
+    else if (AppState.screen === 'hub') handleHubInput(e);
+    else if (AppState.screen === 'fond') handleFondInput(e);
+    else if (AppState.screen === 'main') handleMainInput(e);
+    else if (AppState.screen === 'end') {
+        if (e.key === 'F5') location.reload();
+    }
+});
+
+function handleRegisterInput(e) {
+    if (e.key === 'Enter') {
+        const val = document.getElementById('register-input').value.trim();
+        if (val.length > 0) {
+            PlayerData.nom = val;
+            // Génération d'un matricule aléatoire
+            PlayerData.matricule = Math.floor(1000 + Math.random() * 9000).toString();
+            saveGame();
+            updateGrade();
+            showScreen('login');
+            document.getElementById('login-input').focus();
+            alert(`Félicitations ${PlayerData.nom} !\nVotre matricule employé est le : ${PlayerData.matricule}\nRetenez-le pour vous connecter au NOZ OS.`);
+        }
+    }
+}
+
+function handleLoginInput(e) {
+    if (e.key === 'Enter') {
+        const val = document.getElementById('login-input').value;
+        if (val === PlayerData.matricule) {
+            goToHub();
+        } else {
+            alert("MATRICULE INCONNU OU INCORRECT");
+            document.getElementById('login-input').value = "";
+        }
+    }
+}
+
+// Lancer le jeu au chargement
+window.onload = initGame;
+
+// --- LE HUB INTRANET ---
+function goToHub() {
+    updateGrade();
+
+    // Mettre à jour l'affichage du hub
+    document.getElementById('hub-mat').textContent = PlayerData.matricule;
+    document.getElementById('hub-grade').textContent = GRADES[PlayerData.gradeId].nom;
+    document.getElementById('hub-nom').textContent = PlayerData.nom;
+    document.getElementById('hub-xp').textContent = PlayerData.xp;
+
+    // Débloquer les boutons en fonction du grade
+    const btnStock = document.getElementById('btn-go-stock');
+    if (PlayerData.gradeId >= 2) {
+        btnStock.classList.remove('locked');
+        btnStock.innerHTML = `<span>[2]</span><span>GESTION STOCKS</span>`;
+    }
+    const btnManager = document.getElementById('btn-go-manager');
+    if (PlayerData.gradeId >= 3) {
+        btnManager.classList.remove('locked');
+        btnManager.innerHTML = `<span>[3]</span><span>BUREAU RESPONSABLE</span>`;
     }
 
-    state.mode = 'scan';
-    state.ticket = [];
-    state.totalTicket = 0;
+    showScreen('hub');
+}
+
+function handleHubInput(e) {
+    if (e.key === '1') {
+        showScreen('fond');
+        document.getElementById('fond-input').focus();
+    } else if (e.key === '2' && PlayerData.gradeId >= 2) {
+        alert("MODE GESTION DES STOCKS BIENTOT DISPONIBLE ! (Mise à jour v4.0)");
+    } else if (e.key === '3' && PlayerData.gradeId >= 3) {
+        alert("BUREAU DU RESPONSABLE BIENTOT DISPONIBLE ! (Mise à jour v5.0)");
+    }
+}
+
+// --- LA CAISSE (JEU PRINCIPAL) ---
+function handleFondInput(e) {
+    if (e.key === 'Enter') {
+        const val = parseFloat(document.getElementById('fond-input').value.replace(',', '.'));
+        if (!isNaN(val)) {
+            AppState.caisse.fondTheorique = val;
+            AppState.caisse.caisseReelle = val;
+            startCaisseSession();
+        }
+    }
+}
+
+function startCaisseSession() {
+    showScreen('main');
+    document.getElementById('op-id').textContent = PlayerData.matricule;
+    updateClockDisplay();
+    updateQueueDisplay();
+    AppState.caisse.intervalId = setInterval(gameTick, 1000); // 1 sec = 2 min in-game
+}
+
+function gameTick() {
+    AppState.caisse.time += 2;
+    updateClockDisplay();
+
+    if (AppState.caisse.time >= AppState.caisse.endTime) {
+        endCaisseSession();
+        return;
+    }
+
+    if (Math.random() < 0.15) {
+        AppState.caisse.queue += Math.floor(Math.random() * 2) + 1;
+        updateQueueDisplay();
+    }
+}
+
+function updateClockDisplay() {
+    const h = Math.floor(AppState.caisse.time / 60).toString().padStart(2, '0');
+    const m = (AppState.caisse.time % 60).toString().padStart(2, '0');
+    document.getElementById('clock-main').textContent = `${h}:${m}`;
+}
+
+function updateQueueDisplay() {
+    document.getElementById('queue-count').textContent = AppState.caisse.queue;
+}
+
+// L'appel du client
+function appelerClient() {
+    if (AppState.caisse.isClientAtRegister || AppState.caisse.queue <= 0) return;
+
+    AppState.caisse.queue--;
+    updateQueueDisplay();
+    AppState.caisse.isClientAtRegister = true;
+
+    const nb = Math.floor(Math.random() * 6) + 3;
+    AppState.caisse.commandeClient = [];
+    for(let i=0; i<nb; i++) {
+        AppState.caisse.commandeClient.push(nozCatalogue[Math.floor(Math.random() * nozCatalogue.length)]);
+    }
+
+    AppState.caisse.mode = 'scan';
+    AppState.caisse.ticket = [];
+    AppState.caisse.total = 0;
     updateTicketDisplay();
 
-    // Afficher client
     document.getElementById('event-title').textContent = "CLIENT A LA CAISSE";
     document.getElementById('event-desc').textContent = "Scannez les articles du tapis !";
     drawTapis();
 }
 
 function drawTapis() {
-    if (commandeEnCours.length === 0) {
+    if (AppState.caisse.commandeClient.length === 0) {
         document.getElementById('client-sprite').textContent = "LE TAPIS EST VIDE.\n\n[+] POUR ENCAISSER.";
         return;
     }
 
-    // On simule le scan automatique (ou manuel)
-    // Le premier article est celui à scanner
-    const produit = commandeEnCours[0];
+    const p = AppState.caisse.commandeClient[0];
 
-    // Generer un evenement ?
-    if (Math.random() < 0.2) { // 20% de chance d'un bug code barre
-        triggerEvent('CODE_ILLISIBLE', produit);
+    if (Math.random() < 0.2) {
+        triggerEvent('CODE_ILLISIBLE', p);
         return;
     }
-    if (Math.random() < 0.05) { // 5% de chance panne rouleau
+    if (Math.random() < 0.05) {
         triggerEvent('PANNE_ROULEAU');
         return;
     }
 
-    // Sinon, affichage normal
-    document.getElementById('client-sprite').innerHTML = `
-        PROCHAIN ARTICLE SUR LE TAPIS:
-        <br><br>
-        <span style="background:#0f0; color:#000; padding:2px;">[ ${produit.code} ]</span><br>
-        ${produit.nom}
-    `;
+    document.getElementById('client-sprite').innerHTML = `PROCHAIN ARTICLE SUR LE TAPIS:\n<br><br><span style="background:#0f0; color:#000; padding:2px;">[ ${p.code} ]</span><br>${p.nom}`;
 }
 
-// --- EVENEMENTS "CHAOS" ---
 function triggerEvent(type, data = null) {
-    state.mode = 'event';
-    state.activeEvent = { type, data };
+    AudioSys.play('error');
+    AppState.caisse.mode = 'event';
+    AppState.caisse.activeEvent = { type, data };
 
     if (type === 'CODE_ILLISIBLE') {
         document.getElementById('event-title').textContent = "!!! BIP ERREUR !!!";
         document.getElementById('event-desc').textContent = "Code-barre illisible ! Tapez les 13 chiffres manuellement :";
-        document.getElementById('client-sprite').innerHTML = `
-            ${data.nom}<br>
-            CODE: ${data.code}
-        `;
-    }
-    else if (type === 'PANNE_ROULEAU') {
-        const modal = document.getElementById('alert-modal');
-        modal.classList.remove('hidden');
+        document.getElementById('client-sprite').innerHTML = `${data.nom}<br>CODE: ${data.code}`;
+    } else if (type === 'PANNE_ROULEAU') {
+        document.getElementById('alert-modal').classList.remove('hidden');
     }
 }
 
-// --- GESTION DU CLAVIER (CAISSE) ---
+// Clavier de caisse
 function handleMainInput(e) {
-    if (state.mode === 'scan') {
-        if (e.key === ' ') {
-            appelerClient();
-        } else if (e.key >= '0' && e.key <= '9') {
-            state.mainInput += e.key;
-            updateInputDisplay();
-        } else if (e.key === 'Backspace') {
-            state.mainInput = state.mainInput.slice(0, -1);
-            updateInputDisplay();
-        } else if (e.key === 'Enter') {
-            validerSaisie();
-        } else if (e.key === '+') {
-            if (state.ticket.length > 0 && commandeEnCours.length === 0) {
-                demarrerPaiement();
-            } else if (commandeEnCours.length > 0) {
-                document.getElementById('event-desc').textContent = "TERMINEZ DE SCANNER LE TAPIS D'ABORD !";
-            }
-        }
-    }
-    else if (state.mode === 'event') {
-        if (state.activeEvent.type === 'CODE_ILLISIBLE') {
-            if (e.key >= '0' && e.key <= '9') {
-                state.mainInput += e.key;
-                updateInputDisplay();
-            } else if (e.key === 'Backspace') {
-                state.mainInput = state.mainInput.slice(0, -1);
-                updateInputDisplay();
-            } else if (e.key === 'Enter') {
-                if (state.mainInput === state.activeEvent.data.code) {
-                    // Succès
-                    ajouterAuTicket(state.activeEvent.data);
-                    commandeEnCours.shift();
-                    state.mainInput = "";
-                    updateInputDisplay();
-                    state.mode = 'scan';
-                    state.activeEvent = null;
-                    drawTapis();
-                } else {
-                    document.getElementById('event-desc').textContent = "CODE INCORRECT, RECOMMENCEZ !";
-                    state.mainInput = "";
-                    updateInputDisplay();
-                }
-            }
-        }
-        else if (state.activeEvent.type === 'PANNE_ROULEAU') {
-            if (e.key.toLowerCase() === 'r') {
-                document.getElementById('alert-modal').classList.add('hidden');
-                state.mode = 'scan';
-                state.activeEvent = null;
-                drawTapis();
-            }
-        }
-    }
-    else if (state.mode === 'payment') {
-        if (e.key >= '0' && e.key <= '9' || e.key === '.') {
-            state.mainInput += e.key;
-            updateInputDisplay();
-        } else if (e.key === 'Backspace') {
-            state.mainInput = state.mainInput.slice(0, -1);
-            updateInputDisplay();
-        } else if (e.key === 'Enter') {
-            validerMonnaie();
-        }
-    }
-}
-
-function validerSaisie() {
-    if (!state.mainInput) {
-        // Scan auto si le champ est vide (comme si on utilisait la douchette)
-        if (commandeEnCours.length > 0) {
-            ajouterAuTicket(commandeEnCours[0]);
-            commandeEnCours.shift();
-            drawTapis();
-        }
-    } else {
-        // Saisie manuelle normale (un client qui aurait scanné un code)
-        // Dans ce simulateur, si on tape Entrée et que c'est le bon code sur le tapis, on le passe
-        if (commandeEnCours.length > 0 && state.mainInput === commandeEnCours[0].code) {
-            ajouterAuTicket(commandeEnCours[0]);
-            commandeEnCours.shift();
-            state.mainInput = "";
-            drawTapis();
-        } else {
-            document.getElementById('event-desc').textContent = "BIP ! PRODUIT NON RECONNU (ou pas sur le tapis)";
-            state.mainInput = "";
-        }
-    }
-    updateInputDisplay();
-}
-
-function ajouterAuTicket(produit) {
-    state.ticket.push(produit);
-    state.totalTicket += produit.prix;
-    updateTicketDisplay();
-}
-
-function updateTicketDisplay() {
-    const ul = document.getElementById('ticket-lines');
-    ul.innerHTML = '';
-    state.ticket.forEach(p => {
-        const li = document.createElement('li');
-        li.className = 'ticket-line';
-        li.innerHTML = `<span>${p.nom}</span><span>${p.prix.toFixed(2)} €</span>`;
-        ul.appendChild(li);
-    });
-    ul.scrollTop = ul.scrollHeight;
-    document.getElementById('ticket-total-val').textContent = state.totalTicket.toFixed(2);
-}
-
-function updateInputDisplay() {
-    document.getElementById('main-input-display').textContent = state.mainInput;
-}
-
-// --- PAIEMENT ---
-let paiementClient = 0;
-let aRendre = 0;
-
-function demarrerPaiement() {
-    state.mode = 'payment';
-    state.mainInput = "";
-    updateInputDisplay();
-
-    // Le client donne de l'argent (billet superieur)
-    const billets = [5, 10, 20, 50, 100];
-    paiementClient = billets.find(b => b >= state.totalTicket) || (Math.ceil(state.totalTicket/50)*50);
-    aRendre = paiementClient - state.totalTicket;
-
-    document.getElementById('event-title').textContent = "ENCAISSEMENT";
-    document.getElementById('event-desc').innerHTML = `
-        LE CLIENT DONNE: <b>${paiementClient.toFixed(2)} €</b><br>
-        TAPEZ LE MONTANT A RENDRE ET [ENTRÉE]:
-    `;
-    document.getElementById('client-sprite').textContent = "";
-}
-
-function validerMonnaie() {
-    const saisi = parseFloat(state.mainInput);
-    if (isNaN(saisi)) return;
-
-    const arrondiAttendu = Math.round(aRendre * 100);
-    const arrondiSaisi = Math.round(saisi * 100);
-
-    if (arrondiAttendu === arrondiSaisi) {
-        // Caisse exacte
-        state.caisseReelle += state.totalTicket;
-    } else {
-        // Erreur de caisse (trou ou excédent)
-        const difference = arrondiAttendu - arrondiSaisi;
-        // Si je devais rendre 2 et que je rends 5, j'ai un trou de -3.
-        // Si je devais rendre 5 et que je rends 2, j'ai un excédent de +3 (le client râle mais NOZ est content).
-        state.caisseReelle += state.totalTicket + (difference/100);
-    }
-
-    // Reset pour prochain client
-    state.isClientAtRegister = false;
-    state.ticket = [];
-    state.totalTicket = 0;
-    updateTicketDisplay();
-    state.mainInput = "";
-    updateInputDisplay();
-    state.mode = 'scan';
-
-    document.getElementById('event-title').textContent = "CAISSE OUVERTE";
-    document.getElementById('event-desc').textContent = "Appuyez sur [ESPACE] pour appeler le prochain client.";
-    document.getElementById('client-sprite').textContent = "";
-}
-
-// Lancement direct sur login
-showScreen('login');
-
-// Ajout du raccourci Delete pour annuler un article (comme demandé par la review)
-// On ajoute juste la gestion dans le handleMainInput
-
-const originalHandleMainInput = handleMainInput;
-handleMainInput = function(e) {
-    if (state.mode === 'scan') {
+    if (AppState.caisse.mode === 'scan') {
         if (e.key === 'Delete') {
-            if (state.ticket.length > 0) {
-                const item = state.ticket.pop();
-                state.totalTicket -= item.prix;
-                // On simule une petite pénalité de temps ou juste on met à jour
+            if (AppState.caisse.ticket.length > 0) {
+                const item = AppState.caisse.ticket.pop();
+                AppState.caisse.total -= item.prix;
                 updateTicketDisplay();
                 document.getElementById('event-desc').textContent = "ARTICLE ANNULÉ: " + item.nom;
             } else {
@@ -399,159 +324,176 @@ handleMainInput = function(e) {
             }
             return;
         }
+
+        if (e.key === ' ') {
+            appelerClient();
+        } else if (e.key >= '0' && e.key <= '9') {
+            AppState.caisse.input += e.key;
+            updateInputDisplay();
+        } else if (e.key === 'Backspace') {
+            AppState.caisse.input = AppState.caisse.input.slice(0, -1);
+            updateInputDisplay();
+        } else if (e.key === 'Enter') {
+            validerSaisie();
+        } else if (e.key === '+') {
+            if (AppState.caisse.ticket.length > 0 && AppState.caisse.commandeClient.length === 0) demarrerPaiement();
+            else if (AppState.caisse.commandeClient.length > 0) document.getElementById('event-desc').textContent = "TERMINEZ DE SCANNER LE TAPIS D'ABORD !";
+        }
+    }
+    else if (AppState.caisse.mode === 'event') {
+        if (AppState.caisse.activeEvent.type === 'CODE_ILLISIBLE') {
+            if (e.key >= '0' && e.key <= '9') { AppState.caisse.input += e.key; updateInputDisplay(); }
+            else if (e.key === 'Backspace') { AppState.caisse.input = AppState.caisse.input.slice(0, -1); updateInputDisplay(); }
+            else if (e.key === 'Enter') {
+                if (AppState.caisse.input === AppState.caisse.activeEvent.data.code) {
+                    ajouterAuTicket(AppState.caisse.activeEvent.data);
+                    AppState.caisse.commandeClient.shift();
+                    AppState.caisse.input = ""; updateInputDisplay();
+                    AppState.caisse.mode = 'scan'; AppState.caisse.activeEvent = null; drawTapis();
+                } else {
+                    document.getElementById('event-desc').textContent = "CODE INCORRECT, RECOMMENCEZ !";
+                    AppState.caisse.input = ""; updateInputDisplay();
+                }
+            }
+        }
+        else if (AppState.caisse.activeEvent.type === 'PANNE_ROULEAU') {
+            if (e.key.toLowerCase() === 'r') {
+                document.getElementById('alert-modal').classList.add('hidden');
+                AppState.caisse.mode = 'scan'; AppState.caisse.activeEvent = null; drawTapis();
+            }
+        }
+    }
+    else if (AppState.caisse.mode === 'payment') {
+        if (e.key >= '0' && e.key <= '9' || e.key === '.') { AppState.caisse.input += e.key; updateInputDisplay(); }
+        else if (e.key === 'Backspace') { AppState.caisse.input = AppState.caisse.input.slice(0, -1); updateInputDisplay(); }
+        else if (e.key === 'Enter') { validerMonnaie(); }
+    }
+}
+
+function validerSaisie() {
+    let success = false;
+    if (!AppState.caisse.input) {
+        if (AppState.caisse.commandeClient.length > 0) {
+            ajouterAuTicket(AppState.caisse.commandeClient[0]);
+            AppState.caisse.commandeClient.shift();
+            success = true;
+        }
+    } else {
+        if (AppState.caisse.commandeClient.length > 0 && AppState.caisse.input === AppState.caisse.commandeClient[0].code) {
+            ajouterAuTicket(AppState.caisse.commandeClient[0]);
+            AppState.caisse.commandeClient.shift();
+            success = true;
+        }
     }
 
-    // Appel de la fonction originale pour le reste
-    originalHandleMainInput(e);
-}
-
-// --- SYSTEME DE PROGRESSION (XP ET CARRIERE) ---
-let save = {
-    xp: 0,
-    jour: 1,
-    grade: "STAGIAIRE"
-};
-
-// Charger la sauvegarde locale si existante
-function loadSave() {
-    const savedData = localStorage.getItem('noz_save');
-    if (savedData) {
-        save = JSON.parse(savedData);
+    if (success) {
+        AudioSys.play('scan');
+        document.body.classList.add('flash'); setTimeout(() => document.body.classList.remove('flash'), 50);
+        AppState.caisse.input = "";
+        drawTapis();
+    } else {
+        AudioSys.play('error');
+        document.getElementById('event-desc').textContent = "BIP ! PRODUIT NON RECONNU (ou pas sur le tapis)";
+        AppState.caisse.input = "";
     }
+    updateInputDisplay();
 }
 
-function saveGame() {
-    localStorage.setItem('noz_save', JSON.stringify(save));
+function ajouterAuTicket(p) {
+    AppState.caisse.ticket.push(p);
+    AppState.caisse.total += p.prix;
+    updateTicketDisplay();
 }
 
-function getGradeInfo() {
-    if (save.xp < 100) return "STAGIAIRE";
-    if (save.xp < 300) return "HÔTE(SSE) DE CAISSE";
-    if (save.xp < 600) return "CHEF DE RAYON";
-    return "RESPONSABLE ADJOINT";
+function updateTicketDisplay() {
+    const ul = document.getElementById('ticket-lines');
+    ul.innerHTML = '';
+    AppState.caisse.ticket.forEach(p => {
+        const li = document.createElement('li');
+        li.className = 'ticket-line';
+        li.innerHTML = `<span>${p.nom}</span><span>${p.prix.toFixed(2)} €</span>`;
+        ul.appendChild(li);
+    });
+    ul.scrollTop = ul.scrollHeight;
+    document.getElementById('ticket-total-val').textContent = AppState.caisse.total.toFixed(2);
 }
 
-// Mettre à jour endGame pour inclure la progression
-const originalEndGame = endGame;
-endGame = function() {
-    clearInterval(gameInterval);
+function updateInputDisplay() {
+    document.getElementById('main-input-display').textContent = AppState.caisse.input;
+}
+
+let paiementEnCours = 0;
+let aRendreEnCours = 0;
+
+function demarrerPaiement() {
+    AppState.caisse.mode = 'payment';
+    AppState.caisse.input = "";
+    updateInputDisplay();
+
+    const billets = [5, 10, 20, 50, 100];
+    paiementEnCours = billets.find(b => b >= AppState.caisse.total) || (Math.ceil(AppState.caisse.total/50)*50);
+    aRendreEnCours = paiementEnCours - AppState.caisse.total;
+
+    document.getElementById('event-title').textContent = "ENCAISSEMENT";
+    document.getElementById('event-desc').innerHTML = `LE CLIENT DONNE: <b>${paiementEnCours.toFixed(2)} €</b><br>TAPEZ LE MONTANT A RENDRE ET [ENTRÉE]:`;
+    document.getElementById('client-sprite').textContent = "";
+}
+
+function validerMonnaie() {
+    const saisi = parseFloat(AppState.caisse.input);
+    if (isNaN(saisi)) return;
+
+    AudioSys.play('caisse');
+
+    const att = Math.round(aRendreEnCours * 100);
+    const s = Math.round(saisi * 100);
+
+    if (att === s) {
+        AppState.caisse.caisseReelle += AppState.caisse.total;
+    } else {
+        AppState.caisse.caisseReelle += AppState.caisse.total + ((att - s)/100);
+    }
+
+    AppState.caisse.isClientAtRegister = false;
+    AppState.caisse.ticket = [];
+    AppState.caisse.total = 0;
+    updateTicketDisplay();
+    AppState.caisse.input = "";
+    updateInputDisplay();
+    AppState.caisse.mode = 'scan';
+
+    document.getElementById('event-title').textContent = "CAISSE OUVERTE";
+    document.getElementById('event-desc').textContent = "Appuyez sur [ESPACE] pour appeler le prochain client.";
+}
+
+function endCaisseSession() {
+    clearInterval(AppState.caisse.intervalId);
     showScreen('end');
 
-    // Calcul de l'écart (en centimes pour la précision, mais on le garde en euros ici pour le display)
-    const ecart = state.caisseReelle - state.fondCaisse;
+    const ecart = AppState.caisse.caisseReelle - AppState.caisse.fondTheorique;
+    let xp = 0; let msg = "";
 
-    // Calcul de l'XP
-    let gainXp = 0;
-    let messageEcart = "";
-
-    // Tolérance d'erreur de caisse de 0.05€
     if (Math.abs(ecart) <= 0.05) {
-        gainXp = 25;
-        messageEcart = "CAISSE JUSTE ! (+25 XP)";
+        xp = 25; msg = "CAISSE JUSTE ! (+25 XP)";
     } else if (ecart > 0.05) {
-        gainXp = 10; // C'est pas ouf mais NOZ gagne de l'argent
-        messageEcart = `EXCEDENT DE CAISSE DE +${ecart.toFixed(2)} € (+10 XP)`;
+        xp = 10; msg = `EXCEDENT DE CAISSE DE +${ecart.toFixed(2)} € (+10 XP)`;
     } else {
-        gainXp = 0; // Trou de caisse
-        messageEcart = `TROU DE CAISSE DE ${ecart.toFixed(2)} € (0 XP - AVERTISSEMENT)`;
+        msg = `TROU DE CAISSE DE ${ecart.toFixed(2)} € (0 XP - AVERTISSEMENT)`;
     }
 
-    save.xp += gainXp;
-    save.jour++;
-    save.grade = getGradeInfo();
+    PlayerData.xp += xp;
+    PlayerData.jour++;
+    updateGrade();
     saveGame();
 
     document.getElementById('end-stats').innerHTML = `
-        FOND INITIAL: ${state.fondCaisse.toFixed(2)} €<br>
-        CAISSE FINALE: ${state.caisseReelle.toFixed(2)} €<br>
-        RESULTAT: <span style="color:${Math.abs(ecart)<=0.05 ? '#0f0' : '#f00'}">${messageEcart}</span><br>
-        <br>
+        FOND INITIAL: ${AppState.caisse.fondTheorique.toFixed(2)} €<br>
+        CAISSE FINALE: ${AppState.caisse.caisseReelle.toFixed(2)} €<br>
+        RESULTAT: <span style="color:${Math.abs(ecart)<=0.05 ? '#0f0' : '#f00'}">${msg}</span><br><br>
         --- PROGRESSION CARRIERE ---<br>
-        JOUR TERMINE: ${save.jour - 1}<br>
-        EXPERIENCE TOTALE: ${save.xp} XP<br>
-        GRADE ACTUEL: <span class="title-noz">${save.grade}</span><br>
-        <br>
-        >>> VOUS POUVEZ FERMER L'APPLICATION.<br>
-        [F5] POUR DEMARRER LE JOUR SUIVANT
+        JOUR TERMINE: ${PlayerData.jour - 1}<br>
+        EXPERIENCE TOTALE: ${PlayerData.xp} XP<br>
+        GRADE ACTUEL: <span class="title-noz">${GRADES[PlayerData.gradeId].nom}</span><br><br>
+        [F5] POUR RETOURNER AU HUB INTRANET
     `;
-}
-
-// Appel du chargement à l'initialisation
-loadSave();
-
-// --- DESIGN SONORE (AUDIO API) ---
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-function playBeep(type) {
-    if(audioCtx.state === 'suspended') audioCtx.resume();
-
-    const oscillator = audioCtx.createOscillator();
-    const gainNode = audioCtx.createGain();
-
-    oscillator.connect(gainNode);
-    gainNode.connect(audioCtx.destination);
-
-    if (type === 'scan') {
-        oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(1200, audioCtx.currentTime); // Aigu et court
-        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-        oscillator.start();
-        oscillator.stop(audioCtx.currentTime + 0.1);
-    }
-    else if (type === 'error') {
-        oscillator.type = 'sawtooth';
-        oscillator.frequency.setValueAtTime(200, audioCtx.currentTime); // Grave et "buzzy"
-        gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
-        oscillator.start();
-        oscillator.stop(audioCtx.currentTime + 0.4);
-    }
-    else if (type === 'caisse') {
-        // Un son composite pour la caisse (cha-ching)
-        oscillator.type = 'square';
-        oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
-        oscillator.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.3);
-        gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-        oscillator.start();
-        oscillator.stop(audioCtx.currentTime + 0.3);
-    }
-}
-
-// Injecter le son dans les fonctions existantes
-const originalValiderSaisie = validerSaisie;
-validerSaisie = function() {
-    if (!state.mainInput) {
-        if (commandeEnCours.length > 0) {
-            playBeep('scan');
-        }
-    } else {
-        if (commandeEnCours.length > 0 && state.mainInput === commandeEnCours[0].code) {
-            playBeep('scan');
-        } else {
-            playBeep('error');
-        }
-    }
-    originalValiderSaisie();
-}
-
-const originalTriggerEvent = triggerEvent;
-triggerEvent = function(type, data = null) {
-    playBeep('error');
-    originalTriggerEvent(type, data);
-}
-
-const originalValiderMonnaie = validerMonnaie;
-validerMonnaie = function() {
-    playBeep('caisse');
-    originalValiderMonnaie();
-}
-
-// Ajouter le flash visuel au scan
-const originalPlayBeep = playBeep;
-playBeep = function(type) {
-    if (type === 'scan') {
-        document.body.classList.add('flash');
-        setTimeout(() => document.body.classList.remove('flash'), 50);
-    }
-    originalPlayBeep(type);
 }

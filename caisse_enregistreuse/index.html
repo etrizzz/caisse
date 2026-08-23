@@ -8,6 +8,44 @@
 </head>
 <body>
 
+    <!-- ECRAN 0 : RECRUTEMENT -->
+    <div id="register-screen" class="screen">
+        <div class="login-box" style="width:600px">
+            <h1><span class="title-noz">NOZ</span> RESSOURCES HUMAINES</h1>
+            <p>CONTRAT D'EMBAUCHE</p>
+            <br><p>VEUILLEZ SAISIR VOTRE NOM :</p>
+            <input type="text" id="register-input" class="login-input" style="width:300px;" autocomplete="off">
+            <p>[ENTRÉE] POUR SIGNER LE CONTRAT</p>
+        </div>
+    </div>
+
+    <!-- ECRAN HUB : INTRANET NOZ -->
+    <div id="hub-screen" class="screen">
+        <div class="header-bar">
+            <span><span class="title-noz">NOZ</span> OS - PORTAIL EMPLOYE</span>
+            <span>MATRICULE: <span id="hub-mat"></span> - <span id="hub-grade"></span></span>
+        </div>
+        <div style="text-align:center; margin-top:20px;">
+            <h2>BIENVENUE <span id="hub-nom"></span></h2>
+            <p>EXPERIENCE: <span id="hub-xp"></span> XP</p>
+        </div>
+        <div class="hub-grid">
+            <button class="hub-btn" id="btn-go-caisse">
+                <span>[1]</span>
+                <span>OUVRIR CAISSE</span>
+            </button>
+            <button class="hub-btn locked" id="btn-go-stock">
+                <span>[2]</span>
+                <span>GESTION STOCKS<br><small>(Requiert CHEF DE RAYON)</small></span>
+            </button>
+            <button class="hub-btn locked" id="btn-go-manager">
+                <span>[3]</span>
+                <span>BUREAU RESPONSABLE<br><small>(Requiert RESPONSABLE)</small></span>
+            </button>
+        </div>
+        <p style="text-align:center; margin-top:50px;">Appuyez sur la touche (1) pour lancer votre session de caisse.</p>
+    </div>
+
     <!-- ECRAN 1 : CONNEXION -->
     <div id="login-screen" class="screen active">
         <div class="login-box">
