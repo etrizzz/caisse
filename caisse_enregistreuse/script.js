@@ -1,9 +1,7 @@
 /**
- * NOZ OS - Simulateur de Caisse et de Carrière
- * Refonte d'Architecture
+ * NOZ OS - Simulateur de Caisse et de Carrière (Version Pro/Métier)
  */
 
-// --- BASE DE DONNÉES / CONFIG ---
 const nozCatalogue = [
     { code: "3701234567890", nom: "LOT 300 CURE-DENTS BAMBOU", prix: 0.50 },
     { code: "8412345678901", nom: "SHAMPOING CHEVAL 5L (ESP)", prix: 2.99 },
@@ -18,543 +16,376 @@ const nozCatalogue = [
 ];
 
 const GRADES = [
-    { nom: "STAGIAIRE", xpRequise: 0 },
-    { nom: "HÔTE(SSE) DE CAISSE", xpRequise: 100 },
-    { nom: "CHEF DE RAYON", xpRequise: 300 },
-    { nom: "RESPONSABLE ADJOINT", xpRequise: 600 }
+    { nom: "Niveau 1 (Débutant)", xpRequise: 0 },
+    { nom: "Niveau 2 (Hôte Confirmé)", xpRequise: 100 },
+    { nom: "Niveau 3 (Chef de Rayon)", xpRequise: 300 },
+    { nom: "Niveau 4 (Gérant Magasin)", xpRequise: 600 }
 ];
 
-// --- GESTION AUDIO ---
+// --- AUDIO (Optionnel et silencieux) ---
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 const AudioSys = {
     play: function(type) {
         if(audioCtx.state === 'suspended') audioCtx.resume();
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-
+        osc.connect(gain); gain.connect(audioCtx.destination);
         if (type === 'scan') {
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(1200, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            osc.type = 'sine'; osc.frequency.setValueAtTime(1200, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
             osc.start(); osc.stop(audioCtx.currentTime + 0.1);
         } else if (type === 'error') {
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(200, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            osc.type = 'sawtooth'; osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
             osc.start(); osc.stop(audioCtx.currentTime + 0.4);
         } else if (type === 'caisse') {
-            osc.type = 'square';
-            osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+            osc.type = 'square'; osc.frequency.setValueAtTime(800, audioCtx.currentTime);
             osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.3);
-            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
             osc.start(); osc.stop(audioCtx.currentTime + 0.3);
         }
     }
 };
 
-// --- SYSTEME DE SAUVEGARDE ET PROFIL ---
+// --- DATA PERSISTANTE ---
 let PlayerData = {
-    nom: "",
-    matricule: "",
-    xp: 0,
-    jour: 1,
-    gradeId: 0
+    nom: "", matricule: "", xp: 0, jour: 1, gradeId: 0,
+    budgetMagasin: 2500, reputation: 100
 };
 
-function saveGame() {
-    localStorage.setItem('noz_save_v2', JSON.stringify(PlayerData));
-}
-
+function saveGame() { localStorage.setItem('noz_save_pro', JSON.stringify(PlayerData)); }
 function loadGame() {
-    const data = localStorage.getItem('noz_save_v2');
-    if (data) {
-        PlayerData = JSON.parse(data);
-        return true; // Sauvegarde trouvée
-    }
-    return false; // Nouveau joueur
+    const data = localStorage.getItem('noz_save_pro');
+    if (data) { PlayerData = JSON.parse(data); return true; }
+    return false;
 }
-
 function updateGrade() {
     let newGradeId = 0;
     for (let i = 0; i < GRADES.length; i++) {
-        if (PlayerData.xp >= GRADES[i].xpRequise) {
-            newGradeId = i;
-        }
+        if (PlayerData.xp >= GRADES[i].xpRequise) newGradeId = i;
     }
     PlayerData.gradeId = newGradeId;
 }
 
-// ... La suite du script arrive
-
-// --- ETAT GLOBAL DE L'APPLICATION ---
+// --- APP STATE ---
 let AppState = {
-    screen: 'init', // init, register, login, hub, fond, caisse, end
+    screen: 'init',
     caisse: {
-        intervalId: null,
-        time: 8 * 60,
-        endTime: 19 * 60,
-        fondTheorique: 150,
-        caisseReelle: 0,
-        queue: 0,
-        isClientAtRegister: false,
-        commandeClient: [],
-        ticket: [],
-        total: 0,
-        input: "",
-        mode: "scan", // scan, payment, event
-        activeEvent: null
+        intervalId: null, time: 8*60, endTime: 19*60, fondTheorique: 150, caisseReelle: 0,
+        queue: 0, isClientAtRegister: false, commandeClient: [], ticket: [], total: 0,
+        input: "", mode: "scan", activeEvent: null, patience: 100, patienceInterval: null
     }
 };
 
-function showScreen(screenId) {
+function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.getElementById(screenId + '-screen').classList.add('active');
-    AppState.screen = screenId;
+    document.getElementById(id + '-screen').classList.add('active');
+    AppState.screen = id;
 }
 
-// --- INITIALISATION DU JEU (LANCEMENT) ---
+// --- INIT & RH ---
 function initGame() {
-    if (loadGame()) {
-        // Sauvegarde existante, on passe au login
-        showScreen('login');
-        document.getElementById('login-input').focus();
-    } else {
-        // Pas de sauvegarde, on passe à la RH (Embauche)
-        showScreen('register');
-        document.getElementById('register-input').focus();
-    }
+    if (loadGame()) { showScreen('login'); document.getElementById('login-input').focus(); }
+    else { showScreen('register'); document.getElementById('register-input').focus(); }
 }
 
-// --- LOGIQUE DES ECRANS (CLAVIER) ---
-document.addEventListener('keydown', (e) => {
-    if (AppState.screen === 'register') handleRegisterInput(e);
-    else if (AppState.screen === 'login') handleLoginInput(e);
-    else if (AppState.screen === 'hub') handleHubInput(e);
-    else if (AppState.screen === 'fond') handleFondInput(e);
-    else if (AppState.screen === 'main') handleMainInput(e);
-    else if (AppState.screen === 'end') {
-        if (e.key === 'F5') location.reload();
-    }
-});
-
-function handleRegisterInput(e) {
+function handleRegister(e) {
     if (e.key === 'Enter') {
         const val = document.getElementById('register-input').value.trim();
-        if (val.length > 0) {
-            PlayerData.nom = val;
-            // Génération d'un matricule aléatoire
-            PlayerData.matricule = Math.floor(1000 + Math.random() * 9000).toString();
-            saveGame();
-            updateGrade();
-            showScreen('login');
-            document.getElementById('login-input').focus();
-            alert(`Félicitations ${PlayerData.nom} !\nVotre matricule employé est le : ${PlayerData.matricule}\nRetenez-le pour vous connecter au NOZ OS.`);
+        if (val) {
+            PlayerData.nom = val; PlayerData.matricule = Math.floor(1000 + Math.random() * 9000).toString();
+            saveGame(); updateGrade(); showScreen('login'); document.getElementById('login-input').focus();
+            alert(`Dossier créé.\nMatricule : ${PlayerData.matricule}`);
         }
     }
 }
 
-function handleLoginInput(e) {
+function handleLogin(e) {
     if (e.key === 'Enter') {
-        const val = document.getElementById('login-input').value;
-        if (val === PlayerData.matricule) {
-            goToHub();
-        } else {
-            alert("MATRICULE INCONNU OU INCORRECT");
-            document.getElementById('login-input').value = "";
-        }
+        if (document.getElementById('login-input').value === PlayerData.matricule) { goToHub(); }
+        else { alert("Erreur d'authentification."); document.getElementById('login-input').value = ""; }
     }
 }
 
-// Lancer le jeu au chargement
-window.onload = initGame;
-
-// --- LE HUB INTRANET ---
+// --- HUB INTRANET ---
 function goToHub() {
     updateGrade();
-
-    // Mettre à jour l'affichage du hub
-    document.getElementById('hub-mat').textContent = PlayerData.matricule;
-    document.getElementById('hub-grade').textContent = GRADES[PlayerData.gradeId].nom;
     document.getElementById('hub-nom').textContent = PlayerData.nom;
-    document.getElementById('hub-xp').textContent = PlayerData.xp;
+    document.getElementById('hub-grade').textContent = GRADES[PlayerData.gradeId].nom;
 
-    // Débloquer les boutons en fonction du grade
-    const btnStock = document.getElementById('btn-go-stock');
+    document.getElementById('btn-go-caisse').onclick = () => { showScreen('fond'); document.getElementById('fond-input').focus(); };
+
+    const bStock = document.getElementById('btn-go-stock');
     if (PlayerData.gradeId >= 2) {
-        btnStock.classList.remove('locked');
-        btnStock.innerHTML = `<span>[2]</span><span>GESTION STOCKS</span>`;
-    }
-    const btnManager = document.getElementById('btn-go-manager');
-    if (PlayerData.gradeId >= 3) {
-        btnManager.classList.remove('locked');
-        btnManager.innerHTML = `<span>[3]</span><span>BUREAU RESPONSABLE</span>`;
+        bStock.classList.remove('locked');
+        bStock.onclick = () => {
+            showScreen('stock');
+            document.getElementById('stock-budget').textContent = PlayerData.budgetMagasin;
+        };
     }
 
+    const bManager = document.getElementById('btn-go-manager');
+    if (PlayerData.gradeId >= 3) {
+        bManager.classList.remove('locked');
+        bManager.onclick = () => { showScreen('bureau'); genererLitige(); };
+    }
     showScreen('hub');
 }
 
-function handleHubInput(e) {
-    if (e.key === '1') {
-        showScreen('fond');
-        document.getElementById('fond-input').focus();
-    } else if (e.key === '2' && PlayerData.gradeId >= 2) {
-        alert("MODE GESTION DES STOCKS BIENTOT DISPONIBLE ! (Mise à jour v4.0)");
-    } else if (e.key === '3' && PlayerData.gradeId >= 3) {
-        alert("BUREAU DU RESPONSABLE BIENTOT DISPONIBLE ! (Mise à jour v5.0)");
-    }
+// --- STOCKS & BUREAU ---
+function acheterPalette(type) {
+    let p = 0; if(type==='ALIMENTAIRE') p=450; if(type==='TEXTILE') p=800; if(type==='MYSTERE') p=1200;
+    if (PlayerData.budgetMagasin >= p) {
+        PlayerData.budgetMagasin -= p; PlayerData.xp += 50; saveGame(); updateGrade();
+        document.getElementById('stock-budget').textContent = PlayerData.budgetMagasin;
+        alert("Bon de commande validé.");
+    } else { alert("Fonds insuffisants."); }
 }
 
-// --- LA CAISSE (JEU PRINCIPAL) ---
-function handleFondInput(e) {
+let litigesRestants = 3;
+function genererLitige() {
+    document.getElementById('rep-score').textContent = PlayerData.reputation + "%";
+    if (litigesRestants <= 0) { document.getElementById('litige-text').innerHTML = "<i>Aucun message non lu.</i>"; return; }
+    const m = ["Client se plaint d'un produit périmé (Moutarde).", "Demande de remboursement pour lot incomplet.", "Client mécontent de l'attente en caisse."];
+    document.getElementById('litige-text').innerHTML = "Bonjour,<br><br>" + m[Math.floor(Math.random()*m.length)] + "<br><br>Cordialement.";
+}
+
+function resoudreLitige(action) {
+    if (litigesRestants <= 0) return;
+    if (action === 'rembourser') { PlayerData.budgetMagasin -= 10; PlayerData.reputation = Math.min(100, PlayerData.reputation+5); PlayerData.xp += 20; }
+    else { PlayerData.reputation -= 15; }
+    litigesRestants--; saveGame(); genererLitige();
+    if(PlayerData.reputation < 50) alert("Avertissement de la direction : qualité de service critique.");
+}
+
+// --- CAISSE MAIN ---
+function handleFond(e) {
     if (e.key === 'Enter') {
-        const val = parseFloat(document.getElementById('fond-input').value.replace(',', '.'));
-        if (!isNaN(val)) {
-            AppState.caisse.fondTheorique = val;
-            AppState.caisse.caisseReelle = val;
+        const v = parseFloat(document.getElementById('fond-input').value.replace(',','.'));
+        if (!isNaN(v)) {
+            AppState.caisse.fondTheorique = v; AppState.caisse.caisseReelle = v;
             startCaisseSession();
         }
     }
 }
 
 function startCaisseSession() {
-    showScreen('main');
-    document.getElementById('op-id').textContent = PlayerData.matricule;
-    updateClockDisplay();
-    updateQueueDisplay();
-    AppState.caisse.intervalId = setInterval(gameTick, 1000); // 1 sec = 2 min in-game
+    showScreen('main'); document.getElementById('op-id').textContent = PlayerData.matricule;
+    updateClockDisplay(); updateQueueDisplay();
+    AppState.caisse.intervalId = setInterval(gameTick, 1000);
 }
 
 function gameTick() {
-    AppState.caisse.time += 2;
-    updateClockDisplay();
+    AppState.caisse.time += 2; updateClockDisplay();
+    if (AppState.caisse.time >= AppState.caisse.endTime) { endCaisseSession(); return; }
+    if (Math.random() < 0.15) { AppState.caisse.queue += Math.floor(Math.random()*2)+1; updateQueueDisplay(); }
 
-    if (AppState.caisse.time >= AppState.caisse.endTime) {
-        endCaisseSession();
-        return;
-    }
-
-    if (Math.random() < 0.15) {
-        AppState.caisse.queue += Math.floor(Math.random() * 2) + 1;
-        updateQueueDisplay();
+    // Annonces Vocales Pro (Plus rares)
+    if (Math.random() < 0.01 && 'speechSynthesis' in window) {
+        const msg = new SpeechSynthesisUtterance(["Personnel demandé en rayon 4", "Ouverture caisse 2 immédiate"].sort(()=>0.5-Math.random())[0]);
+        msg.lang='fr-FR'; msg.rate=1.1; window.speechSynthesis.speak(msg);
     }
 }
 
 function updateClockDisplay() {
-    const h = Math.floor(AppState.caisse.time / 60).toString().padStart(2, '0');
-    const m = (AppState.caisse.time % 60).toString().padStart(2, '0');
+    const h = Math.floor(AppState.caisse.time/60).toString().padStart(2,'0');
+    const m = (AppState.caisse.time%60).toString().padStart(2,'0');
     document.getElementById('clock-main').textContent = `${h}:${m}`;
 }
+function updateQueueDisplay() { document.getElementById('queue-count').textContent = AppState.caisse.queue; }
 
-function updateQueueDisplay() {
-    document.getElementById('queue-count').textContent = AppState.caisse.queue;
-}
-
-// L'appel du client
+// LOGIQUE D'APPEL ET PATIENCE
 function appelerClient() {
     if (AppState.caisse.isClientAtRegister || AppState.caisse.queue <= 0) return;
+    AppState.caisse.queue--; updateQueueDisplay(); AppState.caisse.isClientAtRegister = true;
 
-    AppState.caisse.queue--;
-    updateQueueDisplay();
-    AppState.caisse.isClientAtRegister = true;
+    const nb = Math.floor(Math.random()*6)+3; AppState.caisse.commandeClient = [];
+    for(let i=0; i<nb; i++) AppState.caisse.commandeClient.push(nozCatalogue[Math.floor(Math.random()*nozCatalogue.length)]);
 
-    const nb = Math.floor(Math.random() * 6) + 3;
-    AppState.caisse.commandeClient = [];
-    for(let i=0; i<nb; i++) {
-        AppState.caisse.commandeClient.push(nozCatalogue[Math.floor(Math.random() * nozCatalogue.length)]);
-    }
+    AppState.caisse.mode = 'scan'; AppState.caisse.ticket = []; AppState.caisse.total = 0; updateTicketDisplay();
+    drawTapis(); startPatience();
+}
 
-    AppState.caisse.mode = 'scan';
-    AppState.caisse.ticket = [];
-    AppState.caisse.total = 0;
-    updateTicketDisplay();
+function startPatience() {
+    document.getElementById('patience-text').style.display = 'block';
+    AppState.caisse.patience = 100; updatePatienceUI();
+    clearInterval(AppState.caisse.patienceInterval);
+    AppState.caisse.patienceInterval = setInterval(() => {
+        if (!AppState.caisse.isClientAtRegister) { clearInterval(AppState.caisse.patienceInterval); document.getElementById('patience-text').style.display='none'; return; }
+        AppState.caisse.patience -= (AppState.caisse.mode === 'event' ? 3 : 1.5);
+        if (AppState.caisse.patience <= 0) {
+            clearInterval(AppState.caisse.patienceInterval);
+            document.getElementById('patience-text').style.display='none';
+            PlayerData.xp = Math.max(0, PlayerData.xp - 15); saveGame();
+            resetCaisseState();
+            document.getElementById('grid-ean').textContent = "ERROR";
+            document.getElementById('grid-desc').textContent = "ABANDON PANIER - CLIENT PARTI";
+            document.getElementById('grid-status').textContent = "FAIL";
+        } else { updatePatienceUI(); }
+    }, 1000);
+}
 
-    document.getElementById('event-title').textContent = "CLIENT A LA CAISSE";
-    document.getElementById('event-desc').textContent = "Scannez les articles du tapis !";
-    drawTapis();
+function updatePatienceUI() {
+    const val = Math.max(0, Math.floor(AppState.caisse.patience));
+    document.getElementById('patience-val').textContent = val;
+    if(val < 30) document.getElementById('patience-val').style.color = "red";
+    else document.getElementById('patience-val').style.color = "black";
+}
+
+function resetCaisseState() {
+    AppState.caisse.isClientAtRegister = false; AppState.caisse.ticket = []; AppState.caisse.total = 0;
+    updateTicketDisplay(); AppState.caisse.input = ""; updateInputDisplay(); AppState.caisse.mode = 'scan';
+    document.getElementById('alert-modal').classList.add('hidden');
+    document.getElementById('main-input-container').classList.remove('payment-mode');
 }
 
 function drawTapis() {
     if (AppState.caisse.commandeClient.length === 0) {
-        document.getElementById('client-sprite').textContent = "LE TAPIS EST VIDE.\n\n[+] POUR ENCAISSER.";
+        document.getElementById('grid-ean').textContent = "-";
+        document.getElementById('grid-desc').textContent = "En attente paiement [+]";
+        document.getElementById('grid-status').textContent = "OK";
         return;
     }
-
     const p = AppState.caisse.commandeClient[0];
+    if (Math.random() < 0.2) { triggerEvent('CODE_ILLISIBLE', p); return; }
+    if (Math.random() < 0.05) { triggerEvent('PANNE_ROULEAU'); return; }
 
-    if (Math.random() < 0.2) {
-        triggerEvent('CODE_ILLISIBLE', p);
-        return;
-    }
-    if (Math.random() < 0.05) {
-        triggerEvent('PANNE_ROULEAU');
-        return;
-    }
-
-    document.getElementById('client-sprite').innerHTML = `PROCHAIN ARTICLE SUR LE TAPIS:\n<br><br><span style="background:#0f0; color:#000; padding:2px;">[ ${p.code} ]</span><br>${p.nom}`;
+    document.getElementById('grid-ean').textContent = p.code;
+    document.getElementById('grid-desc').textContent = p.nom;
+    document.getElementById('grid-status').textContent = "PRÊT";
 }
 
-function triggerEvent(type, data = null) {
-    AudioSys.play('error');
-    AppState.caisse.mode = 'event';
-    AppState.caisse.activeEvent = { type, data };
-
+function triggerEvent(type, data=null) {
+    AudioSys.play('error'); AppState.caisse.mode = 'event'; AppState.caisse.activeEvent = { type, data };
     if (type === 'CODE_ILLISIBLE') {
-        document.getElementById('event-title').textContent = "!!! BIP ERREUR !!!";
-        document.getElementById('event-desc').textContent = "Code-barre illisible ! Tapez les 13 chiffres manuellement :";
-        document.getElementById('client-sprite').innerHTML = `${data.nom}<br>CODE: ${data.code}`;
+        document.getElementById('grid-ean').textContent = "???";
+        document.getElementById('grid-desc').textContent = data.nom + " (Saisie manuelle requise : " + data.code + ")";
+        document.getElementById('grid-status').textContent = "ERR SCAN";
+        document.getElementById('grid-status').style.color = "red";
     } else if (type === 'PANNE_ROULEAU') {
         document.getElementById('alert-modal').classList.remove('hidden');
     }
 }
 
-// Clavier de caisse
-function handleMainInput(e) {
-    if (AppState.caisse.mode === 'scan') {
-        if (e.key === 'Delete') {
-            if (AppState.caisse.ticket.length > 0) {
-                const item = AppState.caisse.ticket.pop();
-                AppState.caisse.total -= item.prix;
-                updateTicketDisplay();
-                document.getElementById('event-desc').textContent = "ARTICLE ANNULÉ: " + item.nom;
-            } else {
-                document.getElementById('event-desc').textContent = "BIP ! LE TICKET EST DEJA VIDE.";
-            }
-            return;
-        }
+// INPUT CAISSE
+document.addEventListener('keydown', (e) => {
+    if (AppState.screen === 'register') handleRegister(e);
+    else if (AppState.screen === 'login') handleLogin(e);
+    else if (AppState.screen === 'fond') handleFond(e);
+    else if (AppState.screen === 'main') handleMainInput(e);
+});
 
-        if (e.key === ' ') {
-            appelerClient();
-        } else if (e.key >= '0' && e.key <= '9') {
-            AppState.caisse.input += e.key;
-            updateInputDisplay();
-        } else if (e.key === 'Backspace') {
-            AppState.caisse.input = AppState.caisse.input.slice(0, -1);
-            updateInputDisplay();
-        } else if (e.key === 'Enter') {
-            validerSaisie();
-        } else if (e.key === '+') {
-            if (AppState.caisse.ticket.length > 0 && AppState.caisse.commandeClient.length === 0) demarrerPaiement();
-            else if (AppState.caisse.commandeClient.length > 0) document.getElementById('event-desc').textContent = "TERMINEZ DE SCANNER LE TAPIS D'ABORD !";
+function handleMainInput(e) {
+    const c = AppState.caisse;
+    if (c.mode === 'scan') {
+        if (e.key === 'Delete' && c.ticket.length > 0) {
+            const item = c.ticket.pop(); c.total -= item.prix; updateTicketDisplay();
+        }
+        else if (e.key === ' ') appelerClient();
+        else if (e.key >= '0' && e.key <= '9') { c.input += e.key; updateInputDisplay(); }
+        else if (e.key === 'Backspace') { c.input = c.input.slice(0, -1); updateInputDisplay(); }
+        else if (e.key === 'Enter') validerSaisie();
+        else if (e.key === '+') {
+            if (c.ticket.length > 0 && c.commandeClient.length === 0) demarrerPaiement();
         }
     }
-    else if (AppState.caisse.mode === 'event') {
-        if (AppState.caisse.activeEvent.type === 'CODE_ILLISIBLE') {
-            if (e.key >= '0' && e.key <= '9') { AppState.caisse.input += e.key; updateInputDisplay(); }
-            else if (e.key === 'Backspace') { AppState.caisse.input = AppState.caisse.input.slice(0, -1); updateInputDisplay(); }
+    else if (c.mode === 'event') {
+        if (c.activeEvent.type === 'CODE_ILLISIBLE') {
+            if (e.key >= '0' && e.key <= '9') { c.input += e.key; updateInputDisplay(); }
+            else if (e.key === 'Backspace') { c.input = c.input.slice(0, -1); updateInputDisplay(); }
             else if (e.key === 'Enter') {
-                if (AppState.caisse.input === AppState.caisse.activeEvent.data.code) {
-                    ajouterAuTicket(AppState.caisse.activeEvent.data);
-                    AppState.caisse.commandeClient.shift();
-                    AppState.caisse.input = ""; updateInputDisplay();
-                    AppState.caisse.mode = 'scan'; AppState.caisse.activeEvent = null; drawTapis();
-                } else {
-                    document.getElementById('event-desc').textContent = "CODE INCORRECT, RECOMMENCEZ !";
-                    AppState.caisse.input = ""; updateInputDisplay();
-                }
+                if (c.input === c.activeEvent.data.code) {
+                    ajouterAuTicket(c.activeEvent.data); c.commandeClient.shift();
+                    c.input = ""; updateInputDisplay(); c.mode = 'scan'; c.activeEvent = null; drawTapis();
+                    document.getElementById('grid-status').style.color = "green";
+                } else { c.input = ""; updateInputDisplay(); }
             }
-        }
-        else if (AppState.caisse.activeEvent.type === 'PANNE_ROULEAU') {
-            if (e.key.toLowerCase() === 'r') {
-                document.getElementById('alert-modal').classList.add('hidden');
-                AppState.caisse.mode = 'scan'; AppState.caisse.activeEvent = null; drawTapis();
-            }
+        } else if (c.activeEvent.type === 'PANNE_ROULEAU' && e.key.toLowerCase() === 'r') {
+            document.getElementById('alert-modal').classList.add('hidden');
+            c.mode = 'scan'; c.activeEvent = null; drawTapis();
         }
     }
-    else if (AppState.caisse.mode === 'payment') {
-        if (e.key >= '0' && e.key <= '9' || e.key === '.') { AppState.caisse.input += e.key; updateInputDisplay(); }
-        else if (e.key === 'Backspace') { AppState.caisse.input = AppState.caisse.input.slice(0, -1); updateInputDisplay(); }
-        else if (e.key === 'Enter') { validerMonnaie(); }
+    else if (c.mode === 'payment') {
+        if (e.key >= '0' && e.key <= '9' || e.key === '.') { c.input += e.key; updateInputDisplay(); }
+        else if (e.key === 'Backspace') { c.input = c.input.slice(0, -1); updateInputDisplay(); }
+        else if (e.key === 'Enter') validerMonnaie();
     }
 }
 
 function validerSaisie() {
-    let success = false;
-    if (!AppState.caisse.input) {
-        if (AppState.caisse.commandeClient.length > 0) {
-            ajouterAuTicket(AppState.caisse.commandeClient[0]);
-            AppState.caisse.commandeClient.shift();
-            success = true;
-        }
-    } else {
-        if (AppState.caisse.commandeClient.length > 0 && AppState.caisse.input === AppState.caisse.commandeClient[0].code) {
-            ajouterAuTicket(AppState.caisse.commandeClient[0]);
-            AppState.caisse.commandeClient.shift();
-            success = true;
-        }
-    }
+    let success = false; const c = AppState.caisse;
+    if (!c.input && c.commandeClient.length > 0) { ajouterAuTicket(c.commandeClient[0]); c.commandeClient.shift(); success = true; }
+    else if (c.input && c.commandeClient.length > 0 && c.input === c.commandeClient[0].code) { ajouterAuTicket(c.commandeClient[0]); c.commandeClient.shift(); success = true; }
 
     if (success) {
         AudioSys.play('scan');
-        document.body.classList.add('flash'); setTimeout(() => document.body.classList.remove('flash'), 50);
-        AppState.caisse.input = "";
-        drawTapis();
+        document.body.classList.add('flash'); setTimeout(()=>document.body.classList.remove('flash'),50);
+        c.patience = Math.min(100, c.patience + 20); updatePatienceUI();
+        c.input = ""; drawTapis();
     } else {
-        AudioSys.play('error');
-        document.getElementById('event-desc').textContent = "BIP ! PRODUIT NON RECONNU (ou pas sur le tapis)";
-        AppState.caisse.input = "";
+        AudioSys.play('error'); c.input = "";
     }
     updateInputDisplay();
 }
 
-function ajouterAuTicket(p) {
-    AppState.caisse.ticket.push(p);
-    AppState.caisse.total += p.prix;
-    updateTicketDisplay();
-}
+function ajouterAuTicket(p) { AppState.caisse.ticket.push(p); AppState.caisse.total += p.prix; updateTicketDisplay(); }
 
 function updateTicketDisplay() {
-    const ul = document.getElementById('ticket-lines');
-    ul.innerHTML = '';
-    AppState.caisse.ticket.forEach(p => {
-        const li = document.createElement('li');
-        li.className = 'ticket-line';
-        li.innerHTML = `<span>${p.nom}</span><span>${p.prix.toFixed(2)} €</span>`;
-        ul.appendChild(li);
-    });
+    const ul = document.getElementById('ticket-lines'); ul.innerHTML = '';
+    AppState.caisse.ticket.forEach(p => { ul.innerHTML += `<li class="ticket-line"><span>${p.nom.substring(0,15)}</span><span>${p.prix.toFixed(2)}</span></li>`; });
     ul.scrollTop = ul.scrollHeight;
     document.getElementById('ticket-total-val').textContent = AppState.caisse.total.toFixed(2);
 }
 
-function updateInputDisplay() {
-    document.getElementById('main-input-display').textContent = AppState.caisse.input;
-}
+function updateInputDisplay() { document.getElementById('main-input-display').textContent = AppState.caisse.input; }
 
-let paiementEnCours = 0;
 let aRendreEnCours = 0;
-
 function demarrerPaiement() {
-    AppState.caisse.mode = 'payment';
-    AppState.caisse.input = "";
-    updateInputDisplay();
+    const c = AppState.caisse; c.mode = 'payment'; c.input = ""; updateInputDisplay();
+    document.getElementById('main-input-container').classList.add('payment-mode');
+    clearInterval(c.patienceInterval); document.getElementById('patience-text').style.display='none';
 
-    const billets = [5, 10, 20, 50, 100];
-    paiementEnCours = billets.find(b => b >= AppState.caisse.total) || (Math.ceil(AppState.caisse.total/50)*50);
-    aRendreEnCours = paiementEnCours - AppState.caisse.total;
+    const b = [5, 10, 20, 50, 100];
+    const donne = b.find(x => x >= c.total) || (Math.ceil(c.total/50)*50);
+    aRendreEnCours = donne - c.total;
 
-    document.getElementById('event-title').textContent = "ENCAISSEMENT";
-    document.getElementById('event-desc').innerHTML = `LE CLIENT DONNE: <b>${paiementEnCours.toFixed(2)} €</b><br>TAPEZ LE MONTANT A RENDRE ET [ENTRÉE]:`;
-    document.getElementById('client-sprite').textContent = "";
+    document.getElementById('grid-ean').textContent = "PAIEMENT";
+    document.getElementById('grid-desc').innerHTML = `Le client donne ${donne.toFixed(2)} EUR. Rendu attendu à saisir.`;
 }
 
 function validerMonnaie() {
-    const saisi = parseFloat(AppState.caisse.input);
-    if (isNaN(saisi)) return;
-
+    const s = parseFloat(AppState.caisse.input); if (isNaN(s)) return;
     AudioSys.play('caisse');
 
-    const att = Math.round(aRendreEnCours * 100);
-    const s = Math.round(saisi * 100);
+    const att = Math.round(aRendreEnCours * 100); const res = Math.round(s * 100);
+    AppState.caisse.caisseReelle += AppState.caisse.total + ((att===res) ? 0 : (att-res)/100);
 
-    if (att === s) {
-        AppState.caisse.caisseReelle += AppState.caisse.total;
-    } else {
-        AppState.caisse.caisseReelle += AppState.caisse.total + ((att - s)/100);
-    }
-
-    AppState.caisse.isClientAtRegister = false;
-    AppState.caisse.ticket = [];
-    AppState.caisse.total = 0;
-    updateTicketDisplay();
-    AppState.caisse.input = "";
-    updateInputDisplay();
-    AppState.caisse.mode = 'scan';
-
-    document.getElementById('event-title').textContent = "CAISSE OUVERTE";
-    document.getElementById('event-desc').textContent = "Appuyez sur [ESPACE] pour appeler le prochain client.";
+    resetCaisseState();
+    document.getElementById('grid-ean').textContent = "-";
+    document.getElementById('grid-desc').textContent = "Client terminé. Attente prochain.";
 }
 
 function endCaisseSession() {
-    clearInterval(AppState.caisse.intervalId);
-    showScreen('end');
+    clearInterval(AppState.caisse.intervalId); showScreen('end');
+    const e = AppState.caisse.caisseReelle - AppState.caisse.fondTheorique;
+    let xp = 0; let m = "";
+    if (Math.abs(e) <= 0.05) { xp=25; m="OK (Juste)"; }
+    else if (e>0) { xp=10; m="EXCEDENT (+"+e.toFixed(2)+")"; }
+    else { m="DEFICIT ("+e.toFixed(2)+")"; }
 
-    const ecart = AppState.caisse.caisseReelle - AppState.caisse.fondTheorique;
-    let xp = 0; let msg = "";
-
-    if (Math.abs(ecart) <= 0.05) {
-        xp = 25; msg = "CAISSE JUSTE ! (+25 XP)";
-    } else if (ecart > 0.05) {
-        xp = 10; msg = `EXCEDENT DE CAISSE DE +${ecart.toFixed(2)} € (+10 XP)`;
-    } else {
-        msg = `TROU DE CAISSE DE ${ecart.toFixed(2)} € (0 XP - AVERTISSEMENT)`;
-    }
-
-    PlayerData.xp += xp;
-    PlayerData.jour++;
-    updateGrade();
-    saveGame();
+    PlayerData.xp += xp; PlayerData.jour++; saveGame(); updateGrade();
 
     document.getElementById('end-stats').innerHTML = `
-        FOND INITIAL: ${AppState.caisse.fondTheorique.toFixed(2)} €<br>
-        CAISSE FINALE: ${AppState.caisse.caisseReelle.toFixed(2)} €<br>
-        RESULTAT: <span style="color:${Math.abs(ecart)<=0.05 ? '#0f0' : '#f00'}">${msg}</span><br><br>
-        --- PROGRESSION CARRIERE ---<br>
-        JOUR TERMINE: ${PlayerData.jour - 1}<br>
-        EXPERIENCE TOTALE: ${PlayerData.xp} XP<br>
-        GRADE ACTUEL: <span class="title-noz">${GRADES[PlayerData.gradeId].nom}</span><br><br>
-        [F5] POUR RETOURNER AU HUB INTRANET
-    `;
-}
+Rapport de clôture de caisse - Jour ${PlayerData.jour - 1}
+--------------------------------------------------
+Fonds de caisse théorique :  ${AppState.caisse.fondTheorique.toFixed(2)} EUR
+Fonds de caisse compté    :  ${AppState.caisse.caisseReelle.toFixed(2)} EUR
+Ecart constaté            :  ${m}
 
-// Petit correctif pour appliquer le style "payment-mode" vert
-const uiValiderSaisie = validerSaisie;
-validerSaisie = function() {
-    uiValiderSaisie();
+Synthèse Employé:
+Total XP généré           :  ${PlayerData.xp}
+Habilitation validée      :  ${GRADES[PlayerData.gradeId].nom}
+`;
 }
-
-const uiDemarrerPaiement = demarrerPaiement;
-demarrerPaiement = function() {
-    uiDemarrerPaiement();
-    document.getElementById('main-input-container').classList.add('payment-mode');
-}
-
-const uiValiderMonnaie = validerMonnaie;
-validerMonnaie = function() {
-    uiValiderMonnaie();
-    document.getElementById('main-input-container').classList.remove('payment-mode');
-}
-
-// Mise à jour de l'affichage des événements pour utiliser les nouvelles classes
-const uiDrawTapis = drawTapis;
-drawTapis = function() {
-    uiDrawTapis();
-    const sprite = document.getElementById('client-sprite');
-    if (AppState.caisse.commandeClient.length > 0) {
-        const p = AppState.caisse.commandeClient[0];
-        // Ne redessiner que si on est en mode scan (pas en event)
-        if (AppState.caisse.mode === 'scan') {
-           sprite.innerHTML = `<span style="color:#6c757d; font-size:0.8em; text-transform:uppercase; display:block; margin-bottom:10px;">Article sur le tapis</span><span class="product-badge">${p.code}</span><br><strong>${p.nom}</strong>`;
-        }
-    }
-}
-
-const uiTriggerEvent = triggerEvent;
-triggerEvent = function(type, data = null) {
-    uiTriggerEvent(type, data);
-    const box = document.getElementById('event-content-box');
-    if (type === 'CODE_ILLISIBLE') {
-        box.classList.add('error-state');
-        document.getElementById('event-title').textContent = "ERREUR SCANNER";
-        document.getElementById('event-title').style.backgroundColor = "#e60000";
-        document.getElementById('event-title').style.color = "white";
-        document.getElementById('event-desc').textContent = "Code-barre illisible. Veuillez taper les 13 chiffres manuellement :";
-        document.getElementById('client-sprite').innerHTML = `<strong>${data.nom}</strong><br><br><span style="font-family:'Space Mono'; font-size:1.2em;">Code attendu : ${data.code}</span>`;
-    }
-}
-
-const uiHandleMainInput = handleMainInput;
-handleMainInput = function(e) {
-    uiHandleMainInput(e);
-    // Reset de la boite rouge quand le code est validé
-    if (AppState.caisse.mode === 'scan') {
-        const box = document.getElementById('event-content-box');
-        box.classList.remove('error-state');
-        document.getElementById('event-title').style.backgroundColor = "";
-        document.getElementById('event-title').style.color = "";
-        if(AppState.caisse.queue > 0 && !AppState.caisse.isClientAtRegister) {
-            document.getElementById('event-title').textContent = "CLIENT EN ATTENTE";
-        }
-    }
-}
+window.onload = initGame;

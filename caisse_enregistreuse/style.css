@@ -1,348 +1,111 @@
-/* Base Styles - UI Logiciel Moderne */
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Space+Mono&display=swap');
+/* Base Styles - UI Logiciel d'Entreprise Hyper Réaliste (Austère, Pro) */
+@import url('https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&family=Courier+Prime&display=swap');
 
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    user-select: none;
-    font-family: 'Roboto', sans-serif;
-}
+* { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
 
 body {
-    background-color: #e9ecef; /* Gris clair professionnel */
-    color: #343a40;
-    height: 100vh;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
+    background-color: #d4d0c8; /* Gris Windows 98/2000 classique des terminaux pro */
+    color: #000000;
+    height: 100vh; overflow: hidden; display: flex; flex-direction: column;
 }
 
-/* Flash d'écran au scan */
-body::after {
-    content: '';
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background-color: white;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.1s;
-    z-index: 9999;
-}
-body.flash::after {
-    opacity: 0.5;
-    transition: none;
-}
+/* Écrans */
+.screen { display: none; width: 100%; height: 100%; flex-direction: column; }
+.screen.active { display: flex; }
 
-/* Écrans du jeu */
-.screen {
-    display: none;
-    width: 100%;
-    height: 100%;
-    flex-direction: column;
-}
-.screen.active {
-    display: flex;
-}
-
-/* Header commun (Barre des tâches logicielle) */
+/* Header commun (Barre de titre logicielle) */
 .header-bar {
-    background-color: #ffffff;
-    border-bottom: 2px solid #dee2e6;
-    padding: 15px 25px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    font-size: 1.1em;
-    font-weight: 500;
-    z-index: 10;
-}
-.title-noz {
-    color: #e60000;
-    font-weight: 700;
-    font-size: 1.2em;
-    letter-spacing: 1px;
-}
-.header-right {
-    display: flex;
-    gap: 20px;
-    color: #6c757d;
-}
-
-/* --- ECRANS CONNEXION / RH / FOND --- */
-#login-screen, #register-screen, #fond-caisse-screen, #end-screen {
-    justify-content: center;
-    align-items: center;
-    background-color: #f8f9fa;
-}
-.login-box {
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-    padding: 40px;
-    text-align: center;
-    width: 450px;
-    border-top: 5px solid #e60000;
-}
-.login-box h1 { margin-bottom: 10px; font-size: 1.8em; color: #212529; }
-.login-box p { color: #6c757d; margin-bottom: 30px; }
-.login-input {
-    width: 100%;
-    padding: 15px;
-    font-size: 1.5em;
-    text-align: center;
-    border: 2px solid #ced4da;
-    border-radius: 5px;
-    margin-bottom: 20px;
-    outline: none;
-    transition: border-color 0.2s;
-    font-family: 'Space Mono', monospace;
-}
-.login-input:focus { border-color: #e60000; }
-.helper-text { font-size: 0.9em; color: #adb5bd; font-weight: 500;}
-
-/* HUB INTRANET */
-#hub-screen .hub-container {
-    padding: 40px;
-    max-width: 1000px;
-    margin: 0 auto;
-    width: 100%;
-}
-.hub-welcome {
-    background: white;
-    padding: 30px;
-    border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-    margin-bottom: 30px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-.hub-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
-}
-.hub-btn {
-    background: white;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    padding: 40px 20px;
-    font-size: 1.2em;
-    font-weight: bold;
-    color: #495057;
-    cursor: pointer;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-    transition: transform 0.1s, box-shadow 0.1s;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 15px;
-}
-.hub-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 12px rgba(0,0,0,0.1);
-    border-color: #e60000;
-    color: #e60000;
-}
-.hub-btn.locked {
-    background: #e9ecef;
-    color: #adb5bd;
-    cursor: not-allowed;
-    border-color: #e9ecef;
-    box-shadow: none;
-}
-.hub-btn.locked:hover { transform: none; }
-.hub-btn .shortcut-key {
-    background: #f8f9fa;
-    border: 1px solid #dee2e6;
-    padding: 5px 12px;
-    border-radius: 4px;
-    font-size: 0.9em;
-    color: #6c757d;
-}
-
-/* --- ECRAN CAISSE (MAIN) --- */
-.main-caisse-area {
-    display: flex;
-    flex-grow: 1;
-    padding: 20px;
-    gap: 20px;
-    background-color: #e9ecef;
-}
-
-/* Côté Gauche: Ticket */
-.ticket-container {
-    width: 35%;
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-.ticket-header {
-    background: #f8f9fa;
-    padding: 15px;
-    text-align: center;
-    border-bottom: 2px dashed #dee2e6;
-    font-family: 'Space Mono', monospace;
-}
-.ticket-lines {
-    flex-grow: 1;
-    overflow-y: auto;
-    padding: 15px;
-    list-style: none;
-    font-family: 'Space Mono', monospace;
-    font-size: 0.95em;
-}
-.ticket-line {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 8px;
-    color: #212529;
-}
-.ticket-total-box {
-    background: #212529;
+    background-color: #000080; /* Bleu foncé classique Windows */
     color: white;
-    padding: 20px;
-    font-size: 1.8em;
-    font-weight: bold;
-    display: flex;
-    justify-content: space-between;
-}
-
-/* Côté Droit: Interface de caisse */
-.info-area {
-    width: 65%;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
-/* Affichage principal (Prix / Saisie) */
-.current-input-box {
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    padding: 30px;
-    font-size: 3em;
-    font-family: 'Space Mono', monospace;
-    text-align: right;
-    min-height: 120px;
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    border: 2px solid transparent;
-}
-.current-input-box.payment-mode {
-    border-color: #198754;
-    background-color: #f0fdf4;
-}
-
-/* Afficheur Tapis / Evenements */
-.event-box {
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-}
-.event-header {
-    background: #f8f9fa;
-    padding: 15px 20px;
-    border-bottom: 1px solid #dee2e6;
-    border-radius: 8px 8px 0 0;
-    font-weight: bold;
-    font-size: 1.2em;
-    color: #495057;
-}
-.event-content {
-    padding: 30px;
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-}
-.event-content.error-state {
-    background-color: #fff5f5;
-    color: #e60000;
-}
-.client-sprite {
-    margin-top: 20px;
-    font-size: 1.4em;
-    color: #212529;
-}
-.product-badge {
-    background: #e9ecef;
-    padding: 5px 15px;
-    border-radius: 20px;
-    font-family: 'Space Mono', monospace;
-    font-size: 0.8em;
-    color: #495057;
-    margin-bottom: 10px;
-    display: inline-block;
-}
-
-/* Footer Raccourcis */
-.footer-shortcuts {
-    background: #343a40;
-    color: #f8f9fa;
-    padding: 15px 25px;
-    display: flex;
-    justify-content: center;
-    gap: 40px;
-    font-size: 0.9em;
-}
-.shortcut {
-    background: #495057;
     padding: 5px 10px;
-    border-radius: 4px;
-    font-weight: bold;
-    margin-right: 8px;
-    font-family: 'Space Mono', monospace;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 0.9em; font-weight: bold;
+    border-bottom: 2px solid #ffffff;
+}
+.header-right { display: flex; gap: 15px; }
+
+/* Menus Logiciels (Fichier, Edition...) */
+.menu-bar {
+    background-color: #ece9d8;
+    border-bottom: 1px solid #aca899;
+    padding: 2px 10px;
+    display: flex; gap: 15px;
+    font-size: 0.85em;
+}
+.menu-item { cursor: default; padding: 2px 5px; }
+.menu-item:hover { background-color: #316ac5; color: white; }
+
+/* Conteneurs standards style fenêtres */
+.window-container {
+    background-color: #ece9d8;
+    border: 2px outset #ffffff;
+    margin: 20px auto;
+    width: 600px;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+    display: flex; flex-direction: column;
+}
+.window-body { padding: 20px; }
+.form-input {
+    width: 100%; padding: 5px; border: 2px inset #ffffff;
+    background: white; font-family: 'Courier Prime', monospace;
 }
 
-/* Modale Alerte (Windows style) */
-.alert-overlay {
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.6);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
+/* HUB INTRANET PRO */
+#hub-screen { background-color: #3a6ea5; } /* Fond bureau Windows classique */
+.hub-desktop { padding: 20px; display: flex; flex-direction: column; gap: 20px; }
+.desktop-icon {
+    width: 100px; text-align: center; color: white; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+    padding: 10px; border: 1px solid transparent;
 }
+.desktop-icon:hover { background-color: rgba(255,255,255,0.2); border: 1px dotted white; }
+.desktop-icon-img {
+    width: 48px; height: 48px; background-color: #ece9d8; border: 2px outset white;
+    display: flex; justify-content: center; align-items: center; font-weight: bold; color: black;
+}
+.desktop-icon.locked { opacity: 0.5; cursor: not-allowed; }
+
+/* CAISSE */
+.main-caisse-area { display: flex; flex-grow: 1; background-color: #ece9d8; border-top: 1px solid #aca899; }
+.ticket-container {
+    width: 30%; background: white; border-right: 2px solid #aca899;
+    display: flex; flex-direction: column; font-family: 'Courier Prime', monospace; font-size: 0.9em;
+}
+.ticket-header { padding: 10px; text-align: center; border-bottom: 1px dashed black; }
+.ticket-lines { flex-grow: 1; overflow-y: auto; padding: 10px; list-style: none; }
+.ticket-line { display: flex; justify-content: space-between; margin-bottom: 2px; }
+.ticket-total-box { border-top: 2px solid black; padding: 10px; font-weight: bold; font-size: 1.2em; display: flex; justify-content: space-between; }
+
+.info-area { width: 70%; display: flex; flex-direction: column; padding: 10px; gap: 10px; }
+.current-input-box {
+    background: white; border: 2px inset #ffffff; padding: 10px;
+    font-size: 2em; font-family: 'Courier Prime', monospace; text-align: right; height: 60px;
+}
+.current-input-box.payment-mode { background-color: #ccffcc; }
+.event-box { background: white; border: 2px inset #ffffff; flex-grow: 1; padding: 10px; }
+.data-grid { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+.data-grid th, .data-grid td { border: 1px solid #aca899; padding: 5px; text-align: left; }
+.data-grid th { background-color: #ece9d8; }
+
+.footer-status-bar {
+    background-color: #ece9d8; border-top: 2px outset #ffffff;
+    padding: 2px 10px; display: flex; justify-content: space-between; font-size: 0.85em; color: #333;
+}
+.status-item { border-left: 1px solid #aca899; padding-left: 10px; }
+
+/* WMS & OUTLOOK (Tables pro) */
+.pro-table-container { background: white; border: 2px inset #ffffff; height: 300px; overflow-y: auto; margin-bottom:10px; }
+.pro-btn {
+    background: #ece9d8; border: 2px outset #ffffff; padding: 5px 15px; cursor: pointer; font-size: 0.9em;
+}
+.pro-btn:active { border-style: inset; }
+.pro-btn:disabled { color: #888; cursor: not-allowed; }
+
+/* Modal Windows */
+.alert-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.2); display: flex; justify-content: center; align-items: center; z-index: 1000; }
 .alert-overlay.hidden { display: none; }
-.alert-box {
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.3);
-    width: 500px;
-    overflow: hidden;
-}
-.alert-header {
-    background: #e60000;
-    color: white;
-    padding: 15px 20px;
-    font-weight: bold;
-    font-size: 1.2em;
-}
-.alert-body {
-    padding: 30px;
-    text-align: center;
-    font-size: 1.2em;
-    color: #212529;
-}
-.alert-footer {
-    background: #f8f9fa;
-    padding: 15px;
-    text-align: center;
-    border-top: 1px solid #dee2e6;
-    color: #6c757d;
-    font-size: 0.9em;
-}
+.alert-box { background: #ece9d8; border: 2px outset #ffffff; width: 400px; box-shadow: 2px 2px 10px rgba(0,0,0,0.5); }
+.alert-header { background: #000080; color: white; padding: 5px; font-weight: bold; display: flex; justify-content: space-between; }
+.alert-body { padding: 20px; display: flex; gap: 20px; align-items: center; }
+.alert-icon { font-size: 3em; color: #e60000; }
+.alert-footer { padding: 10px; text-align: center; border-top: 1px solid #aca899; }

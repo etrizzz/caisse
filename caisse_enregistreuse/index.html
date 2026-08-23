@@ -3,160 +3,215 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NOZ OS - Point de Vente v4.0</title>
+    <title>NOZ OS - Système de Gestion Intégré</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <!-- ECRAN 0 : RECRUTEMENT -->
+    <!-- RECRUTEMENT / LOGIN -->
     <div id="register-screen" class="screen">
-        <div class="login-box">
-            <h1><span class="title-noz">NOZ</span> RH</h1>
-            <p>PORTAIL D'INTEGRATION</p>
-            <input type="text" id="register-input" class="login-input" placeholder="VOTRE NOM" autocomplete="off">
-            <p class="helper-text">[ENTRÉE] POUR VALIDER LE CONTRAT</p>
+        <div class="window-container">
+            <div class="header-bar">
+                <span>NOZ S.A. - Initialisation Utilisateur</span>
+                <span>[X]</span>
+            </div>
+            <div class="window-body">
+                <p>Nouveau profil détecté dans l'Active Directory.</p>
+                <br>
+                <label>Nom de l'employé :</label>
+                <input type="text" id="register-input" class="form-input" autocomplete="off">
+                <br><br>
+                <div style="text-align:right;"><button class="pro-btn" onclick="document.getElementById('register-input').dispatchEvent(new KeyboardEvent('keydown', {'key': 'Enter'}))">OK</button></div>
+            </div>
         </div>
     </div>
 
-    <!-- ECRAN 1 : CONNEXION -->
     <div id="login-screen" class="screen">
-        <div class="login-box">
-            <h1><span class="title-noz">NOZ</span> OS</h1>
-            <p>AUTHENTIFICATION REQUISE</p>
-            <input type="text" id="login-input" class="login-input" placeholder="MATRICULE" maxlength="4" autocomplete="off">
-            <p class="helper-text">[ENTRÉE] POUR SE CONNECTER</p>
+        <div class="window-container" style="width: 400px; margin-top: 150px;">
+            <div class="header-bar">
+                <span>NOZ OS - Connexion au domaine</span>
+            </div>
+            <div class="window-body">
+                <label>Identifiant (Matricule) :</label>
+                <input type="password" id="login-input" class="form-input" autocomplete="off">
+                <br><br>
+                <div style="text-align:right;"><button class="pro-btn">Connecter</button></div>
+            </div>
         </div>
     </div>
 
-    <!-- ECRAN HUB : INTRANET NOZ -->
+    <!-- HUB INTRANET PRO -->
     <div id="hub-screen" class="screen">
-        <div class="header-bar">
-            <span><span class="title-noz">NOZ</span> OS - INTRANET</span>
-            <div class="header-right">
-                <span id="hub-mat"></span>
-                <span id="hub-grade"></span>
+        <div class="hub-desktop">
+            <div class="desktop-icon" id="btn-go-caisse">
+                <div class="desktop-icon-img">POS</div>
+                <span>Terminal<br>Caisse (1)</span>
+            </div>
+            <div class="desktop-icon locked" id="btn-go-stock">
+                <div class="desktop-icon-img">WMS</div>
+                <span>NOZ_WMS<br>Stocks (2)</span>
+            </div>
+            <div class="desktop-icon locked" id="btn-go-manager">
+                <div class="desktop-icon-img">@</div>
+                <span>Outlook<br>Bureau (3)</span>
             </div>
         </div>
-        <div class="hub-container">
-            <div class="hub-welcome">
-                <div>
-                    <h2 style="margin-bottom:5px;">Bienvenue, <span id="hub-nom"></span></h2>
-                    <p style="color:#6c757d;">Sélectionnez un module pour commencer votre session.</p>
-                </div>
-                <div style="text-align:right;">
-                    <div style="font-size:2em; font-weight:bold; color:#e60000;" id="hub-xp"></div>
-                    <div style="font-size:0.9em; color:#6c757d; font-weight:bold;">XP CUMULÉE</div>
-                </div>
-            </div>
-
-            <div class="hub-grid">
-                <button class="hub-btn" id="btn-go-caisse">
-                    <span class="shortcut-key">TOUCHE 1</span>
-                    <span>LOGICIEL DE CAISSE</span>
-                </button>
-                <button class="hub-btn locked" id="btn-go-stock">
-                    <span class="shortcut-key">TOUCHE 2</span>
-                    <span>GESTION STOCKS<br><small style="font-weight:normal; margin-top:5px; display:block;">(Niveau requis : Chef de Rayon)</small></span>
-                </button>
-                <button class="hub-btn locked" id="btn-go-manager">
-                    <span class="shortcut-key">TOUCHE 3</span>
-                    <span>BUREAU RESPONSABLE<br><small style="font-weight:normal; margin-top:5px; display:block;">(Niveau requis : Responsable)</small></span>
-                </button>
-            </div>
+        <div style="margin-top:auto; background:#ece9d8; padding:5px; border-top:1px solid white; display:flex; gap:20px; font-size:0.85em;">
+            <strong style="color:#000080;">NOZ OS v4.1</strong>
+            <span id="hub-nom"></span> | Habilitation: <span id="hub-grade"></span>
         </div>
     </div>
 
-    <!-- ECRAN 2 : FOND DE CAISSE -->
+    <!-- CAISSE -->
     <div id="fond-caisse-screen" class="screen">
-        <div class="header-bar">
-            <span><span class="title-noz">NOZ</span> OS - CAISSE</span>
-        </div>
-        <div class="login-box" style="width:500px;">
-            <h2 style="margin-bottom:20px;">OUVERTURE DE CAISSE</h2>
-            <p>Veuillez compter votre tiroir-caisse.</p>
-            <div style="background:#f8f9fa; padding:15px; border-radius:5px; margin-bottom:20px; font-weight:bold; color:#495057;">
-                MONTANT THÉORIQUE ATTENDU : 150.00 €
+        <div class="window-container">
+            <div class="header-bar"><span>NOZ POS - Ouverture de session</span></div>
+            <div class="window-body">
+                <p>Déclaration de fond de caisse initial.</p>
+                <br>
+                <input type="text" id="fond-input" class="form-input" placeholder="Montant compté">
             </div>
-            <input type="text" id="fond-input" class="login-input" placeholder="MONTANT RÉEL" autocomplete="off">
-            <p class="helper-text">[ENTRÉE] POUR DÉMARRER LA SESSION</p>
         </div>
     </div>
 
-    <!-- ECRAN 3 : JEU PRINCIPAL (CAISSE) -->
     <div id="main-caisse-screen" class="screen">
         <div class="header-bar">
-            <span>CAISSE 04 | OPÉRATEUR: <span id="op-id"></span></span>
+            <span>NOZ POS Terminal</span>
             <div class="header-right">
-                <span>ATTENTE: <span id="queue-count" style="font-weight:bold; color:#e60000;">0</span></span>
-                <span id="clock-main" style="font-weight:bold; color:#212529;">08:00</span>
+                <span id="op-id"></span>
+                <span id="clock-main"></span>
             </div>
+        </div>
+        <div class="menu-bar">
+            <span class="menu-item">Fichier</span>
+            <span class="menu-item">Édition</span>
+            <span class="menu-item">Administration</span>
         </div>
 
         <div class="main-caisse-area">
-            <!-- Ticket -->
             <div class="ticket-container">
                 <div class="ticket-header">
-                    TICKET DE CAISSE<br><small>NOZ ARRIVAGES</small>
+                    NOZ - TICKET CLIENT<br>
+                    Date: <script>document.write(new Date().toLocaleDateString())</script>
                 </div>
-                <ul id="ticket-lines" class="ticket-lines">
-                    <!-- Lignes injectées via JS -->
-                </ul>
+                <ul id="ticket-lines" class="ticket-lines"></ul>
                 <div class="ticket-total-box">
-                    <span>A PAYER</span>
-                    <span><span id="ticket-total-val">0.00</span> €</span>
+                    <span>TOTAL TTC</span>
+                    <span><span id="ticket-total-val">0.00</span> EUR</span>
                 </div>
             </div>
 
-            <!-- Infos / Saisie -->
             <div class="info-area">
                 <div class="current-input-box" id="main-input-container">
-                    <span id="main-input-display"></span><span style="animation: blink 1s step-end infinite;">_</span>
+                    <span id="main-input-display"></span>_
                 </div>
 
-                <div class="event-box">
-                    <div class="event-header" id="event-title">STATUT: CAISSE OUVERTE</div>
-                    <div class="event-content" id="event-content-box">
-                        <div id="event-desc" style="margin-bottom:15px; color:#6c757d;">Appuyez sur ESPACE pour appeler le client suivant.</div>
-                        <div id="client-sprite" class="client-sprite">
-                            <!-- Infos produit JS -->
-                        </div>
+                <div class="event-box" id="event-content-box">
+                    <table class="data-grid" style="margin-bottom:10px;">
+                        <thead><tr><th width="30%">Code EAN</th><th>Désignation</th><th width="20%">Statut</th></tr></thead>
+                        <tbody>
+                            <tr>
+                                <td id="grid-ean">-</td>
+                                <td id="grid-desc">En attente scan...</td>
+                                <td id="grid-status" style="font-weight:bold; color:green;">OK</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div id="patience-text" style="font-size:0.85em; color:gray; display:none;">
+                        Traitement client en cours... Temps estimé restant: <span id="patience-val">100</span>s
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="footer-shortcuts">
-            <span><span class="shortcut">ENTRÉE</span> VALIDER</span>
-            <span><span class="shortcut">+</span> ENCAISSER</span>
-            <span><span class="shortcut">SUPPR</span> ANNULER LIGNE</span>
-            <span><span class="shortcut">ESPACE</span> APPELER CLIENT</span>
+        <div class="footer-status-bar">
+            <span>Client en file: <span id="queue-count">0</span></span>
+            <span>Appuyez sur ESPACE pour appel suivant | [+] Paiement | [Suppr] Annuler Ligne</span>
         </div>
     </div>
 
-    <!-- ECRAN 4 : FIN DE JOURNEE -->
     <div id="end-screen" class="screen">
-        <div class="header-bar">
-            <span><span class="title-noz">NOZ</span> OS - CLÔTURE</span>
-        </div>
-        <div class="login-box" style="width:600px;">
-            <h2 style="margin-bottom:20px;">BILAN DE SESSION</h2>
-            <div id="end-stats" style="text-align:left; background:#f8f9fa; padding:20px; border-radius:5px; margin-bottom:20px; font-size:1.1em; line-height:1.6;">
-                <!-- Injecté par JS -->
+        <div class="window-container">
+            <div class="header-bar"><span>NOZ POS - Clôture</span></div>
+            <div class="window-body" id="end-stats" style="font-family:'Courier Prime'; font-size:0.9em; white-space:pre-wrap;">
             </div>
-            <p class="helper-text">[F5] POUR RETOURNER AU HUB</p>
+            <div style="text-align:right; padding:10px; border-top:1px solid #aca899;">
+                <button class="pro-btn" onclick="location.reload()">Fermer session [F5]</button>
+            </div>
         </div>
     </div>
 
-    <!-- Modale Alerte -->
+    <!-- WMS STOCKS -->
+    <div id="stock-screen" class="screen">
+        <div class="header-bar"><span>NOZ WMS - Centrale d'Achat</span></div>
+        <div class="menu-bar">
+            <span class="menu-item">Commandes</span>
+            <span class="menu-item">Fournisseurs</span>
+        </div>
+        <div style="padding:20px; background:#ece9d8; flex-grow:1;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                <strong>Saisie de Bon de Commande</strong>
+                <span>Budget Actuel : <span id="stock-budget"></span> EUR</span>
+            </div>
+            <div class="pro-table-container">
+                <table class="data-grid">
+                    <thead><tr><th>Réf. Fournisseur</th><th>Description Lot</th><th>Qté</th><th>Coût Total</th><th>Action</th></tr></thead>
+                    <tbody>
+                        <tr><td>REF-ALI-104</td><td>Palette Alimentaire (DLUO courte)</td><td>1 U</td><td>450.00 EUR</td><td><button class="pro-btn" onclick="acheterPalette('ALIMENTAIRE')">Commander</button></td></tr>
+                        <tr><td>REF-TEX-992</td><td>Palette Vêtements (Lots dépareillés)</td><td>1 U</td><td>800.00 EUR</td><td><button class="pro-btn" onclick="acheterPalette('TEXTILE')">Commander</button></td></tr>
+                        <tr><td>REF-MYS-000</td><td>Palette Mystère Centrale</td><td>1 U</td><td>1200.00 EUR</td><td><button class="pro-btn" onclick="acheterPalette('MYSTERE')">Commander</button></td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <button class="pro-btn" onclick="showScreen('hub')">Fermer</button>
+        </div>
+    </div>
+
+    <!-- BUREAU / OUTLOOK -->
+    <div id="bureau-screen" class="screen">
+        <div class="header-bar"><span>Microsoft Outlook - Boîte de réception</span></div>
+        <div class="menu-bar">
+            <span class="menu-item">Nouveau</span>
+            <span class="menu-item">Répondre</span>
+            <span class="menu-item" style="color:gray;">Transférer</span>
+        </div>
+        <div style="display:flex; flex-grow:1; background:white;">
+            <div style="width:250px; border-right:2px inset #fff; background:#ece9d8; padding:5px; font-size:0.9em;">
+                <div>> Boîte de réception (1)</div>
+                <div style="padding-left:15px; color:gray;">> Eléments envoyés</div>
+                <div style="padding-left:15px; color:gray;">> Corbeille</div>
+                <br>
+                <div style="border-top:1px solid #aca899; padding-top:10px;">
+                    Indicateur Qualité Magasin :<br><strong id="rep-score">100%</strong>
+                </div>
+            </div>
+            <div style="flex-grow:1; padding:20px; display:flex; flex-direction:column;">
+                <div style="border-bottom:1px solid #aca899; padding-bottom:10px; margin-bottom:20px; font-family:Arial;">
+                    <strong>De :</strong> Service Client NOZ Centrale<br>
+                    <strong>Objet :</strong> Réclamation client Magasin 04<br>
+                    <strong>Date :</strong> <script>document.write(new Date().toLocaleString())</script>
+                </div>
+                <div style="font-family:Arial; font-size:0.95em; flex-grow:1;" id="litige-text">
+                    <!-- Text mail -->
+                </div>
+                <div style="display:flex; gap:10px; padding-top:20px; border-top:1px solid #eee;">
+                    <button class="pro-btn" onclick="resoudreLitige('rembourser')">Emettre Avoir (-10€)</button>
+                    <button class="pro-btn" onclick="resoudreLitige('ignorer')">Clôturer sans suite</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL -->
     <div id="alert-modal" class="alert-overlay hidden">
         <div class="alert-box">
-            <div class="alert-header">ERREUR MATÉRIELLE</div>
+            <div class="alert-header"><span>Erreur système</span><span>[X]</span></div>
             <div class="alert-body">
-                Le rouleau de ticket de caisse est coincé ou vide. L'imprimante est bloquée.
+                <div class="alert-icon">❌</div>
+                <div>L'imprimante n'est pas prête ou le rouleau est vide.<br><br>Action requise : Appuyez sur [R] pour acquitter.</div>
             </div>
-            <div class="alert-footer">
-                Veuillez appuyer sur la touche [ R ] de votre clavier pour changer le rouleau.
-            </div>
+            <div class="alert-footer"><button class="pro-btn" onclick="document.dispatchEvent(new KeyboardEvent('keydown', {'key':'r'}))">OK</button></div>
         </div>
     </div>
 

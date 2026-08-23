@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=NOZ Simulator 2027
+Comment=Le simulateur de caisse et de gestion d'entreprise ultime.
+Exec=bash -c "$(dirname %k)/start_noz.sh"
+Terminal=true
+Categories=Game;Simulation;
+Icon=utilities-terminal
