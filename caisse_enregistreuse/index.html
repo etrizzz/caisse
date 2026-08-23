@@ -3,143 +3,126 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NOZ Quantum OS v1.0</title>
+    <title>Logiciel Caisse NOZ v2.4</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- Background Animé -->
-    <div class="bg-orbs">
-        <div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div>
-    </div>
-
-    <!-- AI Assistant -->
-    <div class="glass-panel ai-assistant" id="ai-bot">
-        <div class="ai-header">NOZ-AI SYNC</div>
-        <div id="ai-text">Initialisation des systèmes neuronaux...</div>
-    </div>
-
     <!-- ECRAN 1: LOGIN -->
     <div class="screen active" id="login-screen">
-        <div class="glass-panel login-center">
-            <h1 style="font-size:2em; font-weight:300; margin-bottom:10px;">NOZ <span style="color:var(--neon-blue); font-weight:700;">QUANTUM</span></h1>
-            <p style="color:#888; margin-bottom:30px;">IDENTIFICATION BIOMÉTRIQUE / MATRICULE</p>
-            <div id="login-content">
-                <!-- Dynamique JS -->
+        <div class="window-border login-container" style="margin-top: 100px;">
+            <div class="header-bar" style="width: 100%; margin-bottom: 10px;">
+                <span>Authentification Caisse</span>
             </div>
+            <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><rect width='100' height='100' fill='%23ece9d8'/><text x='10' y='50' font-family='Arial' font-size='30' font-weight='bold' fill='%230000aa'>NOZ</text></svg>" alt="Logo" style="width:100px; height:100px;">
+            <div style="font-size: 14px; margin-bottom: 5px;">Entrez votre matricule :</div>
+            <input type="password" id="login-input-field" class="login-input" value="1234">
+            <button onclick="login()">Se Connecter</button>
         </div>
     </div>
 
-    <!-- ECRAN 2: DASHBOARD (TYCOON HUB) -->
+    <!-- ECRAN 2: MANAGER HUB (Menu principal) -->
     <div class="screen" id="hub-screen">
-        <div class="top-bar glass-panel" style="margin:20px;">
-            <div class="logo-area">NOZ <span>Q-OS</span></div>
-            <div class="status-area">
-                <div class="badge" id="hub-grade">Habilitation</div>
-                <div>Opérateur: <strong id="hub-nom" style="color:var(--neon-blue);"></strong></div>
-                <div style="font-family:'Share Tech Mono';">J<span id="hub-jour">1</span> - <span id="hub-time">08:00</span></div>
-            </div>
+        <div class="header-bar">
+            <span>NOZ Magasin - Interface Employé</span>
+            <span id="hub-time-display">08:00</span>
         </div>
 
-        <div class="dashboard-grid">
-            <!-- Stats Joueur -->
-            <div class="glass-panel widget">
-                <div class="w-title">COMPTE PERSONNEL</div>
-                <div class="w-value money" id="hub-argent">0.00 €</div>
-                <p style="color:#888;">Salaire en attente : <span id="hub-salaire" style="color:#fff;">0 €</span></p>
-                <div style="margin-top:auto;"><span class="badge" style="border-color:var(--neon-green); color:var(--neon-green);">+<span id="hub-xp">0</span> XP Cumulée</span></div>
+        <div class="hub-grid">
+            <div class="window-border hub-panel">
+                <div class="hub-title">Informations Employé</div>
+                <div class="hub-stat">Nom: <strong id="hub-nom"></strong></div>
+                <div class="hub-stat">Grade: <span id="hub-grade"></span></div>
+                <div class="hub-stat">Salaire en attente: <span id="hub-salaire">0</span> €</div>
+                <div class="hub-stat" style="margin-top:10px; color:#0000aa; font-weight:bold;">XP: <span id="hub-xp">0</span></div>
             </div>
 
-            <!-- Stats Magasin (WMS) -->
-            <div class="glass-panel widget">
-                <div class="w-title">TRÉSORERIE MAGASIN</div>
-                <div class="w-value" id="hub-budget">0.00 €</div>
-                <div style="display:flex; justify-content:space-between; margin-top:10px;">
-                    <span style="color:#888;">Stock Physique :</span>
-                    <strong id="hub-stock" style="color:var(--neon-blue); font-size:1.2em;">0</strong>
-                </div>
-                <button class="btn-cyber" style="margin-top:auto;" id="btn-wms" onclick="showScreen('wms')">Ouvrir WMS</button>
-            </div>
-
-            <!-- RH & Réputation -->
-            <div class="glass-panel widget">
-                <div class="w-title">RÉPUTATION & STAFF</div>
-                <div class="w-value" style="color:var(--text-main);" id="hub-rep">100%</div>
-                <div style="display:flex; justify-content:space-between; margin-top:10px;">
-                    <span style="color:#888;">Caissiers Auto :</span>
-                    <strong id="hub-staff" style="font-size:1.2em;">0</strong>
-                </div>
-                <div style="display:flex; gap:10px; margin-top:auto;">
-                    <button class="btn-cyber" style="flex:1;" id="btn-hr" onclick="showScreen('hr')">Gérer RH</button>
-                    <button class="btn-cyber danger" style="flex:1;" id="btn-mail" onclick="showScreen('mail')">Litiges</button>
+            <div class="window-border hub-panel" id="manager-panel" style="display:none;">
+                <div class="hub-title">Outils de Gestion (Manager)</div>
+                <div class="hub-stat">Budget Magasin: <span id="hub-budget">0</span> €</div>
+                <div class="hub-stat">Stock Réserve: <span id="hub-stock">0</span> unités</div>
+                <div style="margin-top: 15px; display:flex; gap:5px; flex-wrap:wrap;">
+                    <button onclick="showScreen('wms')">Commander Stock (WMS)</button>
+                    <button onclick="showScreen('hr')">Gérer RH</button>
+                    <button onclick="showScreen('mail')">Mails / Litiges</button>
                 </div>
             </div>
 
-            <!-- GROS BOUTON CAISSE -->
-            <div class="glass-panel widget" style="grid-column: span 3; flex-direction:row; align-items:center; justify-content:space-between; padding:30px;">
-                <div>
-                    <h2 style="font-size:2em; font-weight:300;">Terminal d'encaissement Holographique</h2>
-                    <p style="color:#888; margin-top:10px;">Prise de poste manuelle. Le temps s'écoule en temps réel.</p>
-                </div>
-                <button class="btn-cyber" style="font-size:1.5em; padding:20px 50px; background:var(--neon-blue); color:#000;" onclick="showScreen('caisse')">LANCER SESSION</button>
+            <div class="window-border hub-panel" style="grid-column: span 2; text-align:center; padding: 30px;">
+                <h2 style="margin-bottom: 20px; font-family:Arial;">Prise de Poste Caisse</h2>
+                <button style="font-size: 20px; padding: 15px 40px; font-weight:bold;" onclick="showScreen('caisse')">OUVRIR CAISSE (Service)</button>
             </div>
         </div>
     </div>
 
-    <!-- ECRAN 3: CAISSE IMMERSIVE -->
+    <!-- ECRAN 3: CAISSE REALISTE -->
     <div class="screen" id="caisse-screen">
-        <div class="top-bar glass-panel" style="margin:20px;">
-            <div class="logo-area">TERMINAL <span>CAISSE</span></div>
-            <div class="status-area">
-                <div style="color:#888;">File d'attente: <strong id="caisse-queue" style="color:var(--neon-red); font-size:1.5em;">0</strong></div>
-                <div style="font-family:'Share Tech Mono';">Fonds théorique: <span id="caisse-fond">150.00</span></div>
-            </div>
+        <div class="pos-header">
+            <span>NOZ POS v2.4 - CAISSE <span id="caisse-num">1</span></span>
+            <span>Caissier: <span id="pos-op-name"></span> | <span id="pos-time"></span></span>
         </div>
-
-        <div class="caisse-container">
-            <!-- Ticket Holographique -->
-            <div class="glass-panel ticket-hologram">
-                <div style="text-align:center; padding-bottom:15px; border-bottom:1px solid rgba(255,255,255,0.1);">NOZ TRANSACTION LOG</div>
-                <ul class="ticket-lines" id="ticket-lines"></ul>
-                <div style="font-size:1.5em; display:flex; justify-content:space-between; padding-top:15px; border-top:1px solid rgba(255,255,255,0.1);">
-                    <span>TOTAL</span>
-                    <span id="caisse-total" style="color:var(--neon-green);">0.00 €</span>
+        <div class="pos-main">
+            <!-- TICKET (Gauche) -->
+            <div class="pos-left">
+                <div class="pos-ticket-header">TICKET DE CAISSE EN COURS</div>
+                <div class="pos-ticket" id="ticket-lines">
+                    <!-- lignes injectées -->
+                </div>
+                <div class="pos-total-area">
+                    TOTAL: <span id="caisse-total">0.00</span> €
                 </div>
             </div>
+            <!-- CONTRÔLES (Droite) -->
+            <div class="pos-right">
+                <div class="pos-scan-area window-inset">
+                    <div class="pos-scan-desc" id="caisse-desc">EN ATTENTE DE CLIENT</div>
+                    <div class="pos-scan-ean" id="caisse-ean">Appuyez sur APPEL CLIENT</div>
+                </div>
 
-            <!-- Scanner & Input -->
-            <div class="scanner-area">
-                <div class="glass-panel scanner-viewport">
-                    <div class="laser-beam" id="laser"></div>
-                    <div class="item-hologram" id="caisse-display">
-                        <h2 id="caisse-desc" style="color:#888;">EN ATTENTE DE CLIENT</h2>
-                        <p id="caisse-ean" style="color:var(--glass-border);">-</p>
+                <div class="pos-input-area" id="caisse-input">
+                    <!-- Saisie en cours -->
+                </div>
+
+                <div class="pos-keypad-container">
+                    <div class="pos-numpad">
+                        <button onclick="typeNum('7')">7</button>
+                        <button onclick="typeNum('8')">8</button>
+                        <button onclick="typeNum('9')">9</button>
+                        <button onclick="typeNum('4')">4</button>
+                        <button onclick="typeNum('5')">5</button>
+                        <button onclick="typeNum('6')">6</button>
+                        <button onclick="typeNum('1')">1</button>
+                        <button onclick="typeNum('2')">2</button>
+                        <button onclick="typeNum('3')">3</button>
+                        <button class="pos-numpad-zero" onclick="typeNum('0')">0</button>
+                        <button onclick="typeNum('.')">.</button>
+                    </div>
+                    <div class="pos-actions">
+                        <button class="btn-annul" onclick="clearInput()">CORRIGER (C)</button>
+                        <button onclick="appelClient()">APPEL CLIENT (ESPACE)</button>
+                        <button onclick="scanAction()">SCAN / VALIDER (ENTRÉE)</button>
+                        <button onclick="openCatalogue()">CATALOGUE CODES (F1)</button>
+                        <button class="btn-total" onclick="processTotal()">TOTAL / ENCAISSER</button>
+                        <button class="btn-cb" onclick="payCB()" id="btn-cb" disabled>CARTE BANCAIRE</button>
+                        <button class="btn-esp" onclick="payEsp()" id="btn-esp" disabled>ESPÈCES</button>
+                        <button style="margin-top:10px; background:#ccc;" onclick="fermerCaisse()">FERMER CAISSE (ESC)</button>
                     </div>
                 </div>
-
-                <div class="glass-panel input-console" id="caisse-input-container">
-                    <span id="caisse-input"></span><span style="animation: blink 1s infinite;">_</span>
-                </div>
             </div>
-        </div>
-
-        <div class="shortcuts-bar">
-            <span><span class="shortcut-key">ESPACE</span> Appel Client</span>
-            <span><span class="shortcut-key">ENTRÉE</span> Scan/Valider</span>
-            <span><span class="shortcut-key">+</span> TPE/Paiement</span>
-            <span><span class="shortcut-key">SUPPR</span> Annuler Item</span>
-            <span><span class="shortcut-key">ESC</span> Quitter Terminal</span>
         </div>
     </div>
 
-    <!-- ECRAN WMS / HR / MAIL (Modèles Génériques par-dessus le Hub) -->
-    <div class="overlay" id="modal-app">
-        <div class="glass-panel" style="width: 800px; max-height: 80vh; display: flex; flex-direction: column;">
-            <div style="padding: 20px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center;">
-                <h2 id="modal-title" style="font-weight:300;">Titre</h2>
-                <button class="btn-cyber" style="padding: 5px 15px;" onclick="closeModal()">Fermer</button>
+    <!-- MODALS (Popups Windows) -->
+    <div class="modal-overlay" id="modal-app">
+        <div class="modal-window">
+            <div class="header-bar">
+                <span id="modal-title">Titre</span>
+                <button style="padding: 0 5px; font-weight:bold; height:20px; font-size:12px; margin:0;" onclick="closeModal()">X</button>
             </div>
-            <div style="padding: 20px; overflow-y: auto;" id="modal-body">
+            <div class="modal-body" id="modal-body">
                 <!-- Contenu dynamique -->
+            </div>
+            <div class="modal-footer">
+                <button onclick="closeModal()">Fermer</button>
             </div>
         </div>
     </div>
